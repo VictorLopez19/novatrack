@@ -20,6 +20,7 @@ import { iniciarAvisoGiro } from './ui/avisoGiro.js';
 import { crearTransicion } from './ui/transicion.js';
 import { iniciarTemporizador } from './ui/temporizadorSesion.js';
 import { mostrarSplash } from './ui/splash.js';
+import { iniciarPantallaCompleta } from './ui/pantallaCompleta.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -490,4 +491,5 @@ async function iniciar() {
 
 // Inicializa el aviso de giro y pone en marcha la aplicación.
 iniciarAvisoGiro();
+iniciarPantallaCompleta({ aviso: (t) => msg(t, 'info') });
 iniciar();
