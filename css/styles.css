@@ -334,7 +334,7 @@ body::before { /* cuadrícula de fondo */
 /* 7. MENSAJES TIPO CHAT (abajo a la derecha)
    ========================================================================== */
 .chat-mensajes {
-  position: fixed; z-index: 1500; right: max(.75rem, env(safe-area-inset-right)); bottom: max(.75rem, env(safe-area-inset-bottom));
+  position: fixed; z-index: 1500; right: max(.75rem, env(safe-area-inset-right)); bottom: calc(max(.75rem, env(safe-area-inset-bottom)) + 2rem);
   width: min(400px, calc(100vw - 1.5rem)); display: flex; flex-direction: column; align-items: flex-end; gap: .4rem; pointer-events: none;
 }
 .chat-burbuja {
@@ -392,7 +392,7 @@ html.mantener-vertical .aviso-giro { display: none; }
 
 /* Celular horizontal (pantalla baja) */
 @media (max-height: 520px) and (orientation: landscape) {
-  :root { --joy: clamp(100px, min(22vw, 42vh), 190px); --ctl: 36px; }
+  :root { --joy: clamp(90px, calc(100dvh - 150px), 190px); --ctl: 36px; }
   .barra { padding: .15rem .6rem; }
   .btn-barra { min-height: 38px; min-width: 38px; }
   .tablero { padding: .3rem .6rem; gap: .3rem; }
@@ -406,7 +406,7 @@ html.mantener-vertical .aviso-giro { display: none; }
   .item-ctl span { font-size: .62rem; }
   .btn-detener { min-height: 38px; margin-top: 4px; font-size: .95rem; }
   .zona-et { font-size: .75rem; }
-  .pie { padding: .15rem 1rem; font-size: .7rem; }
+  .pie { padding: .15rem 1rem; font-size: .7rem; position: sticky; bottom: 0; z-index: 5; background: #03112c;}
   .barra::after { display: none; }
 }
 
