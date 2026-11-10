@@ -15,6 +15,7 @@
   --ok: #3ee58a; --warn: #ffbf3c; --err: #ff6b7a;
   --morado: #b9a0ff; --naranja: #ffb020; --rojo: #c8102e;
   --joy: clamp(130px, 40vw, 250px); /* tamaño de los joysticks */
+  --ctl: 44px;
 }
 
 * { box-sizing: border-box; }
@@ -142,11 +143,11 @@ body::before { /* cuadrícula de fondo */
 /* Botonera */
 .botonera { display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
 .fila-botones { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
-.item-ctl { display: flex; flex-direction: column; align-items: center; gap: .2rem; width: 56px; }
+.item-ctl { display: flex; flex-direction: column; align-items: center; gap: .2rem; width: calc(var(--ctl) + 12px); }
 .item-ctl span { font-size: .7rem; color: var(--muted); }
 
 .btn-ctl {
-  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; font-size: 1.25rem; color: #fff;
+  width: var(--ctl); height: var(--ctl); display: grid; place-items: center; border-radius: 50%; font-size: calc(var(--ctl) * .5); color: #fff;
   background: rgba(8, 30, 70, .75); border: 2px solid var(--azul); box-shadow: 0 0 12px rgba(47, 139, 255, .4);
   transition: transform .08s, box-shadow .15s;
 }
@@ -391,11 +392,21 @@ html.mantener-vertical .aviso-giro { display: none; }
 
 /* Celular horizontal (pantalla baja) */
 @media (max-height: 520px) and (orientation: landscape) {
-  :root { --joy: clamp(110px, min(24vw, 44vh), 200px); }
-  .tablero { padding: .4rem .6rem; gap: .4rem; }
+  :root { --joy: clamp(100px, min(22vw, 42vh), 190px); --ctl: 36px; }
+  .barra { padding: .15rem .6rem; }
+  .btn-barra { min-height: 38px; min-width: 38px; }
+  .tablero { padding: .3rem .6rem; gap: .3rem; }
+  .centro { gap: .25rem; }
   .vehiculo-texto { display: none; }
-  .icono-veh { width: 45px; height: 45px; font-size: 1.5rem; }
-  .zona-et { font-size: .8rem; }
+  .tarjeta-veh { margin-bottom: 2px; padding: .15rem .7rem; }
+  .icono-veh { width: 34px; height: 34px; font-size: 1.1rem; }
+  .botonera { gap: .25rem; }
+  .fila-botones { gap: .35rem; }
+  .item-ctl { gap: .1rem; }
+  .item-ctl span { font-size: .62rem; }
+  .btn-detener { min-height: 38px; margin-top: 4px; font-size: .95rem; }
+  .zona-et { font-size: .75rem; }
+  .pie { padding: .15rem 1rem; font-size: .7rem; }
   .barra::after { display: none; }
 }
 
