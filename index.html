@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>NovaTrack</title>
+    <meta name="description" content="Panel de control del vehículo IoT: joysticks, comandos y DEMO.">
+    <meta name="theme-color" content="#020a1c">
+
+    <!-- Define los recursos y conexiones permitidos para la aplicación. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        font-src https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        img-src 'self' data:;
+        connect-src 'self' http://127.0.0.1:8000 ws://127.0.0.1:8000 https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        base-uri 'self';
+        form-action 'none'">
+
+    <!-- Carga los iconos de la aplicación. -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+    <!-- Carga las hojas de estilos externas y locales. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<!-- Muestra la pantalla de entrada mientras se inicia la aplicación. -->
+<div id="splash" class="splash" role="status" aria-label="Cargando Nova Track">
+    <div class="splash-contenido">
+        <img class="splash-logo" src="./favicon.svg" alt="" width="140" height="140">
+        <p class="splash-nombre">Nova <span>Track</span></p>
+        <p class="splash-lema">Control excavadora IoT</p>
+        <div class="splash-barra" aria-hidden="true">
+            <i></i>
+        </div>
+    </div>
+</div>
+
+<body>
+
+    <!-- Contenedor principal del panel de control. -->
+    <div class="app">
+
+        <!-- Barra superior con el estado de conexión y las opciones generales. -->
+        <header class="barra">
+
+            <div class="conexion" role="status">
+                <span class="conexion-et">Conexión</span>
+
+                <span class="conexion-val">
+                    <span id="ws-punto" class="punto punto-err" aria-hidden="true"></span>
+                    <strong id="ws-texto">Desconectado</strong>
+                </span>
+            </div>
+
+            <!-- Muestra el tiempo restante de la sesión. -->
+            <div id="temp-sesion" class="temp-sesion" role="timer" aria-label="Tiempo restante de la sesión" hidden>
+                <small class="txt-lg">La sesión expirará en </small>
+                <span>02:00</span>
+            </div>
+
+            <!-- Agrupa las acciones generales de la aplicación. -->
+            <div class="barra-acciones">
+
+                <button id="btn-pantalla" class="btn-barra" type="button" aria-label="Pantalla completa">
+                    <i class="bi bi-fullscreen" aria-hidden="true"></i>
+                </button>
+
+                <button id="btn-ajustes" class="btn-barra" type="button">
+                    Ajustes
+                    <i class="bi bi-gear-fill" aria-hidden="true"></i>
+                </button>
+
+                <button id="btn-info" class="btn-barra" type="button" aria-label="Información de conexión">
+                    <span id="info-punto" class="punto punto-warn" aria-hidden="true"></span>
+                    <span class="txt-lg">Información</span>
+                    <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                </button>
+
+            </div>
+        </header>
+
+        <!-- Distribuye los controles del vehículo en tres secciones. -->
+        <main class="tablero">
+
+            <!-- Contiene el joystick para controlar el desplazamiento del chasis. -->
+            <section class="zona zona-izq" aria-label="Control del chasis">
+                <div id="joy-chasis"></div>
+                <p class="zona-et">Chasis</p>
+            </section>
+
+            <!-- Contiene la identificación, el estado y los comandos principales. -->
+            <section class="centro" aria-label="Controles principales">
+
+                <div class="tarjeta-veh">
+                    <span class="veh-et">Vehículo</span>
+                    <strong id="veh-nombre">Cargando…</strong>
+                </div>
+
+                <div id="vehiculo-estado" class="icono-veh" data-estado="sin_confirmar" role="img"
+                    aria-labelledby="vehiculo-estado-texto">
+                    <i class="bi bi-wifi" aria-hidden="true"></i>
+                </div>
+
+                <p id="vehiculo-estado-texto" class="vehiculo-texto">
+                    Vehículo físico sin confirmar
+                </p>
+
+                <div id="botonera" class="botonera"></div>
+
+                <button id="btn-detener" class="btn-detener" type="button" aria-label="DETENER (tecla Escape)">
+                    <i class="bi bi-stop-circle-fill" aria-hidden="true"></i>
+                    DETENER
+                </button>
+
+            </section>
+
+            <!-- Contiene el joystick para controlar el brazo y la garra. -->
+            <section class="zona zona-der" aria-label="Control del brazo y la garra">
+                <div id="joy-brazo"></div>
+                <p class="zona-et">Brazo y garra</p>
+            </section>
+
+        </main>
+
+        <!-- Muestra los créditos de la aplicación. -->
+        <footer class="pie">
+            <span id="pie-creditos"></span>
+        </footer>
+
+    </div>
+
+    <!-- Solicita la orientación horizontal del dispositivo. -->
+    <div id="aviso-giro" class="aviso-giro" role="alertdialog" aria-modal="true" aria-labelledby="t-giro">
+        <i class="bi bi-phone-landscape" aria-hidden="true"></i>
+
+        <h2 id="t-giro">Gira tu dispositivo</h2>
+        <p>Para mejorar la experiencia gira tu dispositivo</p>
+
+        <div class="aviso-acciones">
+
+            <button id="btn-girar" class="btn-d btn-d-primario" type="button">
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                Girar pantalla
+            </button>
+
+            <button id="btn-vertical" class="btn-d" type="button">
+                <i class="bi bi-phone" aria-hidden="true"></i>
+                Mantener en vertical
+            </button>
+
+        </div>
+
+        <p id="giro-ayuda" class="giro-ayuda" role="status"></p>
+    </div>
+
+    <!-- Contiene la configuración del vehículo y las credenciales de acceso. -->
+    <dialog id="dlg-ajustes" class="dialogo" aria-labelledby="t-ajustes">
+
+        <h2 id="t-ajustes">
+            <i class="bi bi-gear-fill" aria-hidden="true"></i>
+            <strong>Ajustes</strong>
+        </h2>
+
+        <p class="ajustes-intro">
+            Elige el vehículo y escribe tu clave de acceso para poder enviar comandos.
+        </p>
+
+        <!-- Permite seleccionar el vehículo que se desea controlar. -->
+        <span id="et-vehiculo" class="form-label">Vehículo</span>
+        <div id="lista-vehiculos" class="vehiculos" role="radiogroup" aria-labelledby="et-vehiculo"></div>
+
+        <!-- Permite introducir la clave de acceso a la API. -->
+        <label for="inp-clave" class="form-label mt-3">Clave de acceso</label>
+
+        <div class="clave-wrap">
+            <input id="inp-clave" class="form-control" type="password" autocomplete="off" spellcheck="false"
+                maxlength="200">
+
+            <button id="btn-ver-clave" class="btn-ojo" type="button" aria-label="Mostrar clave">
+                <i class="bi bi-eye-fill" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <p id="lista-faltantes" class="faltantes"></p>
+
+        <!-- Agrupa las acciones de configuración de la sesión. -->
+        <div class="dialogo-acciones">
+
+            <button id="btn-guardar" class="btn-d btn-d-primario" type="button">
+                Guardar
+            </button>
+
+            <button id="btn-limpiar" class="btn-d btn-d-peligro" type="button">
+                Destruir sesión
+            </button>
+
+            <button id="btn-cerrar-ajustes" class="btn-d" type="button">
+                Cerrar
+            </button>
+
+        </div>
+    </dialog>
+
+    <!-- Permite seleccionar y consultar las demostraciones disponibles. -->
+    <dialog id="dlg-demo" class="dialogo" aria-labelledby="t-demo">
+
+        <h2 id="t-demo">
+            <i class="fa-brands fa-files-pinwheel"></i>
+            <strong>Demo</strong>
+        </h2>
+
+        <div class="carrusel">
+
+            <button id="demo-prev" class="carrusel-flecha" type="button" aria-label="DEMO anterior">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+
+            <ul id="lista-demos" class="demos" tabindex="0" aria-label="DEMO disponibles"></ul>
+
+            <button id="demo-next" class="carrusel-flecha" type="button" aria-label="DEMO siguiente">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </button>
+
+        </div>
+
+        <div id="demo-puntos" class="puntos-demo" aria-hidden="true"></div>
+        <p id="demo-contador" class="demo-contador"></p>
+
+        <!-- Muestra el estado de la demostración seleccionada o ejecutada. -->
+        <div id="demo-estado" class="demo-estado-card" role="status" aria-live="polite"></div>
+
+        <div class="dialogo-acciones">
+
+            <button id="btn-demo-recargar" class="btn-d" type="button">
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                Recargar
+            </button>
+
+            <button id="btn-demo-cerrar" class="btn-d" type="button">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cerrar
+            </button>
+
+        </div>
+    </dialog>
+
+    <!-- Muestra el estado de los servicios de comunicación y almacenamiento. -->
+    <dialog id="dlg-info" class="dialogo" aria-labelledby="t-info">
+
+        <h2 id="t-info">
+            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+            <strong>Estado de conectividad</strong>
+        </h2>
+
+        <ul class="estados">
+
+            <li class="estado-fila">
+                <i class="bi bi-broadcast estado-icono" aria-hidden="true"></i>
+
+                <div class="estado-info">
+                    <strong>WebSocket</strong>
+                    <small>Sesión en tiempo real con la API</small>
+                </div>
+
+                <span id="chip-ws" class="chip">
+                    <i aria-hidden="true"></i>
+                    <span></span>
+                </span>
+            </li>
+
+            <li class="estado-fila">
+                <i class="bi bi-cloud-fill estado-icono" aria-hidden="true"></i>
+
+                <div class="estado-info">
+                    <strong>Servidor AWS</strong>
+                    <small>API vehiculo IoT</small>
+                </div>
+
+                <span id="chip-api" class="chip">
+                    <i aria-hidden="true"></i>
+                    <span></span>
+                </span>
+            </li>
+
+            <li class="estado-fila">
+                <i class="bi bi-database-fill estado-icono" aria-hidden="true"></i>
+
+                <div class="estado-info">
+                    <strong>Amazon RDS</strong>
+                    <small>Base de datos</small>
+                </div>
+
+                <span id="chip-rds" class="chip">
+                    <i aria-hidden="true"></i>
+                    <span></span>
+                </span>
+            </li>
+
+        </ul>
+
+        <!-- Muestra el último evento recibido por la aplicación. -->
+        <div class="evento-caja">
+            <span class="evento-et">Evento reciente</span>
+
+            <div id="ultimo-evento" class="evento-card vacio" role="status" aria-live="polite">
+                Sin eventos todavía
+            </div>
+        </div>
+
+        <p class="nota-info">
+            Que el WSS o la API respondan no confirma que el vehículo físico esté conectado.
+        </p>
+
+        <div class="dialogo-acciones">
+            <button id="btn-cerrar-info" class="btn-d" type="button">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cerrar
+            </button>
+        </div>
+
+    </dialog>
+
+    <!-- Muestra los mensajes y notificaciones generados dinámicamente. -->
+    <div id="mensajes" class="chat-mensajes" role="log" aria-live="polite" aria-label="Mensajes"></div>
+
+    <!-- Muestra la pantalla de transición durante los cambios de vista. -->
+    <div id="transicion" class="transicion" role="status" aria-live="assertive" hidden>
+        <div class="trans-card">
+            <span class="trans-spinner" aria-hidden="true"></span>
+            <p id="trans-texto"></p>
+        </div>
+    </div>
+
+    <!-- Carga el punto de entrada de JavaScript como módulo ES6. -->
+    <script type="module" src="./js/main.js"></script>
+
+</body>
+
+</html>
