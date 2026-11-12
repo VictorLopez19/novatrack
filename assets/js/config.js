@@ -97,7 +97,7 @@ export const CONFIG = Object.freeze({
   botones: Object.freeze([
     // Botones de funciones pendientes de integración.
     { fila: 1, tipo: 'voz', etiqueta: 'Voz', icono: 'bi-mic-fill', tono: 'morado' },
-    { fila: 1, tipo: 'pendiente', etiqueta: 'Cámara', icono: 'bi-camera-fill', tono: 'morado' },
+    { fila: 1, tipo: 'gesto', etiqueta: 'Gestos', icono: 'bi-hand-index-thumb-fill', tono: 'morado' },
     { fila: 1, tipo: 'pendiente', etiqueta: 'Giroscopio', icono: 'bi-phone-fill', tono: 'morado' },
 
     // Botones asociados a comandos disponibles en el catálogo.
@@ -137,6 +137,26 @@ export const CONFIG = Object.freeze({
     },
   }),
 
-
+  gestos: Object.freeze({
+    libUrl: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',
+    wasmUrl: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm',
+    modeloUrl: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+    espejo: true,         // true si la cámara frontal entrega la imagen sin espejo (lo normal)
+    cuadroMs: 50,         // ~20 lecturas por segundo
+    framesMov: 5,         // lecturas seguidas iguales antes de mover (≈ 0.25 s)
+    framesParada: 2,      // y antes de detener
+    framesUnico: 8,       // acciones de un solo disparo (≈ 0.4 s)
+    sinManoMs: 400,       // sin mano o pose rara por este tiempo: detiene
+    requiereArmado: true, // primero palma abierta o mano fuera de cuadro
+    largoMin: 0.5,        // largo mínimo del índice respecto de la palma
+    zonaNeutra: 0.18,     // puño: radio central de la imagen que equivale a «quieto»
+    umbralOk: 0.3,        // distancia pulgar–índice (respecto de la palma) para la señal OK
+    unicos: ['ENCENDIDO', 'VELOCIDAD', 'SONIDO', 'LUCES'],
+    mapa: {               // izquierda y derecha son las del usuario
+      indice: { arriba: 'AVANZAR', abajo: 'RETROCEDER', izquierda: 'IZQUIERDA', derecha: 'DERECHA' },
+      puno: { arriba: 'BRAZO_SUBIR', abajo: 'BRAZO_BAJAR', izquierda: 'GARRA_ABRIR', derecha: 'GARRA_CERRAR' },
+      cuernitos: 'ENCENDIDO', v: 'VELOCIDAD', tres: 'SONIDO', ok: 'LUCES',
+    },
+  }),
 
 });

@@ -49,8 +49,10 @@ export class ServicioComandos {
 
     if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
-    if (this.#store.get('modo') === 'voz' && !String(duenio).includes('voz')) {
-      this.#msg('Modo voz activo: los demás controles están deshabilitados.', 'warn'); return false;
+    const modo = this.#store.get('modo');
+    
+    if (modo !== 'manual' && !String(duenio).includes(modo)) {
+      this.#msg(`Modo ${modo === 'gesto' ? 'gestos' : 'voz'} activo: los demás controles están deshabilitados.`, 'warn'); return false;
     }
 
     if (!cmd) {
@@ -162,7 +164,7 @@ export class ServicioComandos {
     if (demo.estado !== 'libre' && demo.modo === 'ia') {
       this.#msg('Una orden de IA no se puede cancelar: se envía DETENER, pero la secuencia puede continuar.', 'warn');
     } else if (demo.estado !== 'libre') { await this.#cancelarDemo(); return true; }
-    
+
 
     if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 

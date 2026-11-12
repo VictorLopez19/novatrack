@@ -412,6 +412,16 @@ html.mantener-vertical .aviso-giro { display: none; }
   .panel-voz { padding: .3rem .6rem; gap: .2rem; }
   .voz-onda, .voz-pista, .voz-ia-nota { display: none; }
   .voz-burbuja { padding: .2rem .55rem; font-size: .75rem; }
+
+
+  .panel-gestos { padding: .3rem .6rem; gap: .2rem; }
+  .gesto-vista { max-width: 110px; }
+  .modo-gesto .voz-pista { display: none; }
+
+
+  .gesto-guia { width: 100%; font-size: .78rem; color: var(--muted); }
+  .gesto-guia summary { cursor: pointer; text-align: center; }
+  .gesto-guia ul { margin: .3rem 0 0; padding-left: 1.1rem; text-align: left; }
 }
 
 @media (max-height: 520px) {
@@ -486,8 +496,8 @@ html.mantener-vertical .aviso-giro { display: none; }
 .modo-etiqueta { padding-left: .5rem; border-left: 1px solid rgba(140, 192, 255, .4); font-size: .85rem; font-weight: 700; }
 .modo-voz .modo-etiqueta { color: var(--morado); }
 
-.modo-voz .botonera { display: none; }
-.modo-voz .joystick { opacity: .3; filter: grayscale(.6); pointer-events: none; }
+.modo-voz .botonera, .modo-gesto .botonera { display: none; }
+.modo-voz .joystick, .modo-gesto .joystick { opacity: .3; filter: grayscale(.6); pointer-events: none; }
 
 .panel-voz { display: none; flex-direction: column; align-items: center; gap: .4rem; width: 100%; max-width: 320px; padding: .6rem .8rem; border: 1px solid var(--morado); border-radius: 16px; background: linear-gradient(160deg, rgba(60, 30, 130, .38), rgba(4, 18, 47, .6)); box-shadow: 0 0 16px rgba(185, 160, 255, .3); }
 .modo-voz .panel-voz { display: flex; }
@@ -526,3 +536,16 @@ html.mantener-vertical .aviso-giro { display: none; }
 .voz-ia small { font-size: .75rem; text-align: center; color: var(--muted); }
 .voz-ia-nota { opacity: .8; }
 .voz-pista { margin: 0; font-size: .72rem; color: var(--muted); }
+
+
+
+/* Modo gestos */
+.panel-gestos { display: none; flex-direction: column; align-items: center; gap: .4rem; width: 100%; max-width: 320px; padding: .6rem .8rem; border: 1px solid var(--morado); border-radius: 16px; background: linear-gradient(160deg, rgba(60, 30, 130, .38), rgba(4, 18, 47, .6)); box-shadow: 0 0 16px rgba(185, 160, 255, .3); }
+.modo-gesto .panel-gestos { display: flex; }
+.panel-gestos .btn-d { flex: none; min-height: 38px; }
+.gesto-vista { position: relative; width: 100%; max-width: 200px; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--azul); border-radius: 12px; background: #000; transform: scaleX(-1); }
+.gesto-vista video, .gesto-vista canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gesto-chip { display: inline-flex; align-items: center; gap: .4rem; margin: 0; padding: .25rem .8rem; border: 1px solid var(--muted); border-radius: 999px; font-size: .85rem; font-weight: 700; }
+.gesto-chip[data-tono="mov"] { border-color: var(--naranja); } .gesto-chip[data-tono="mov"] i { color: var(--naranja); }
+.gesto-chip[data-tono="parada"] { border-color: var(--rojo); } .gesto-chip[data-tono="parada"] i { color: var(--err); }
+.gesto-aviso { margin: 0; min-height: 1.1em; font-size: .78rem; text-align: center; color: var(--muted); }

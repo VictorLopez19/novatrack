@@ -23,6 +23,8 @@ import { mostrarSplash } from './ui/splash.js';
 import { iniciarPantallaCompleta } from './ui/pantallaCompleta.js';
 import { ServicioVoz, vozSoportada } from './servicios/servicioVoz.js';
 import { iniciarPanelVoz } from './ui/panelVoz.js';
+import { ServicioGestos, gestosSoportados } from './servicios/servicioGestos.js';
+import { iniciarPanelGestos } from './ui/panelGestos.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -107,6 +109,7 @@ const haySesion = () => Boolean(sesion.obtenerClave());
 
 // Abre los ajustes mediante la pantalla de transición.
 function irAAjustes() {
+  if (store.get('modo') === 'gesto') gestos.desactivar('Sesión requerida: modo gestos desactivado.', 'warn');
   if (store.get('modo') === 'voz') voz.desactivar('Sesión requerida: modo voz desactivado.', 'warn');
 
   if (transicion.activa || $('dlg-ajustes').open) return;
@@ -152,6 +155,10 @@ const voz = new ServicioVoz({
   api, store, comandos, demo, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.voz,
 });
 
+const gestos = new ServicioGestos({
+  store, comandos, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.gestos
+});
+
 // ---------- Joysticks ----------
 
 // Crea los joysticks definidos en la configuración.
@@ -195,12 +202,16 @@ const marcarJoysticks = () => {
   }
 };
 
+const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos' };
 store.on('modo', (m) => {
   document.documentElement.classList.toggle('modo-voz', m === 'voz');
-  $('modo-etiqueta').textContent = m === 'voz' ? 'Voz' : 'Manual';
-  for (const j of Object.values(joysticks)) j.deshabilitar(m === 'voz');
+  document.documentElement.classList.toggle('modo-gesto', m === 'gesto');
+  $('modo-etiqueta').textContent = ETIQUETA_MODO[m] ?? 'Manual';
+  for (const j of Object.values(joysticks)) j.deshabilitar(m !== 'manual');
 });
+
 iniciarPanelVoz({ panel: $('panel-voz'), servicio: voz, store });
+iniciarPanelGestos({ panel: $('panel-gestos'), servicio: gestos });
 
 // ---------- UI ----------
 
@@ -217,8 +228,10 @@ const botonera = new Botonera($('botonera'), {
   store,
   emisor: emisorBotones,
   alDemo: () => panelDemo.abrir(),
-  alVoz: () => voz.activar(), 
+  alVoz: () => voz.activar(),
   vozOk: vozSoportada,
+  alGestos: () => gestos.activar($('gesto-video')), 
+  gestosOk: gestosSoportados,
 });
 
 // Configura el diálogo de ajustes y las acciones para guardar o limpiar la selección.

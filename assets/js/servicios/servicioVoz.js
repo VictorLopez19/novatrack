@@ -35,6 +35,7 @@ export class ServicioVoz {
 
   activar() {
     if (this.#activo) return true;
+    if (this.#store.get('modo') !== 'manual') { this.#msg('Sal del modo actual antes de activar la voz.', 'warn'); return false; }
     if (!vozSoportada) { this.#msg('Tu navegador no soporta el reconocimiento de voz. Usa Chrome, Edge o Safari.', 'error'); return false; }
     if (!this.#store.get('vehiculoId')) { this.#msg('Selecciona un vehículo en Ajustes.', 'error'); return false; }
     if (this.#store.get('demo').estado !== 'libre') { this.#msg('Hay una DEMO o una orden de IA en curso. Espera a que termine.', 'warn'); return false; }

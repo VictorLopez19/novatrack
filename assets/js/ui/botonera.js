@@ -9,10 +9,12 @@ export class Botonera {
   #alDemo;
   #alVoz;
   #vozOk;
+  #alGestos;
+  #gestosOk;
   #btns = new Map();
 
   // Inicializa la botonera, registra eventos y actualiza su estado.
-  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk }) {
+  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk }) {
     this.#cont = contenedor;
     this.#cfg = botones;
     this.#servicio = servicio;
@@ -20,6 +22,8 @@ export class Botonera {
     this.#alDemo = alDemo;
     this.#alVoz = alVoz;
     this.#vozOk = vozOk;
+    this.#alGestos = alGestos;
+    this.#gestosOk = gestosOk;
 
     this.#render();
 
@@ -80,6 +84,8 @@ export class Botonera {
           );
         } else if (b.tipo === 'voz') {
           this.#alVoz();
+        } else if (b.tipo === 'gesto') {
+          this.#alGestos();
         }
 
       });
@@ -104,6 +110,10 @@ export class Botonera {
         ok = hayVeh && libre && this.#vozOk;
         if (!this.#vozOk)
           motivo = 'Tu navegador no soporta el reconocimiento de voz';
+      } else if (b.tipo === 'gesto') {
+        ok = hayVeh && libre && this.#gestosOk;
+        if (!this.#gestosOk)
+          motivo = 'Tu navegador no permite usar la cámara';
       } else if (b.tipo === 'demo') {
         ok = hayVeh;
       } else if (!this.#servicio.puedeEnviar(b.clave)) {
