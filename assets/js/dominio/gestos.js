@@ -13,36 +13,69 @@ function direccion(dx, dy, espejo) {
 }
 
 /** @returns {string|null} clave de comando según cfg.mapa, 'DETENER', o null (pose no reconocida) */
+
 export function clasificarMano(m, cfg) {
   if (!Array.isArray(m) || m.length < 21) return null;
+
   const ext = DEDOS.map((f) => extendido(m, f));
   const [indice, medio, anular, menique] = ext;
   const n = ext.filter(Boolean).length;
   const palma = dist(m[0], m[9]) || 1;
 
-  if (medio && anular && menique && dist(m[4], m[8]) / palma < cfg.umbralOk) return cfg.mapa.ok; // 👌 pulgar e índice juntos
-  if (n === 4) return 'DETENER';                                                                  // ✋ palma abierta
-  if (indice && menique && !medio && !anular) return cfg.mapa.cuernitos;                          // 🤘
-  if (indice && medio && !anular && !menique) return cfg.mapa.v;                                  // ✌
-  if (indice && medio && anular && !menique) return cfg.mapa.tres;                                // 3 dedos: índice, medio y anular
+  // OK: pulgar e índice juntos
+  if (medio && anular && menique &&
+    dist(m[4], m[8]) / palma < cfg.umbralOk) {
+    return cfg.mapa.ok;
+  }
 
-  if (indice && n === 1) {                                                                        // ☝ índice apuntando: chasis
+  // Palma abierta: detener
+  if (n === 4) return 'DETENER';
+
+  // Cuernitos
+  if (indice && menique && !medio && !anular) {
+    return cfg.mapa.cuernitos;
+  }
+
+  // Tres dedos
+  if (indice && medio && anular && !menique) {
+    return cfg.mapa.tres;
+  }
+
+  // Puño cerrado: velocidad, sin comprobar posición
+  if (n === 0) {
+    return cfg.mapa.puno;
+  }
+
+  // Dos dedos: brazo y garra según la orientación de los dedos
+  if (indice && medio && !anular && !menique) {
+    const dx = ((m[8].x + m[12].x) / 2) -
+      ((m[5].x + m[9].x) / 2);
+
+    const dy = ((m[8].y + m[12].y) / 2) -
+      ((m[5].y + m[9].y) / 2);
+
+    if (Math.hypot(dx, dy) / palma < cfg.largoMin) return null;
+
+    const d = direccion(dx, dy, cfg.espejo);
+    return d ? cfg.mapa.dosDedos[d] : null;
+  }
+
+  // Índice solo: movimientos del chasis
+  if (indice && n === 1) {
     const dx = m[8].x - m[5].x;
     const dy = m[8].y - m[5].y;
-    if (Math.hypot(dx, dy) / palma < cfg.largoMin) return null;
+
+    if (Math.hypot(dx, dy) / palma < cfg.largoMin) {
+      return null;
+    }
+
     const d = direccion(dx, dy, cfg.espejo);
     return d ? cfg.mapa.indice[d] : null;
   }
 
-  if (n === 0) {                                                                                  // ✊ puño: brazo y garra según su posición
-    const cx = PALMA.reduce((s, i) => s + m[i].x, 0) / PALMA.length - 0.5;
-    const cy = PALMA.reduce((s, i) => s + m[i].y, 0) / PALMA.length - 0.5;
-    if (Math.hypot(cx, cy) < cfg.zonaNeutra) return 'DETENER'; // puño en el centro = quieto
-    const d = direccion(cx, cy, cfg.espejo);
-    return d ? cfg.mapa.puno[d] : null;
-  }
   return null;
 }
+
 
 /** Estabiliza las lecturas: exige varias seguidas, detiene si se pierde la mano y pide «armar» antes de mover. */
 export class FiltroGestos {

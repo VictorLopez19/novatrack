@@ -7,14 +7,15 @@ const ETIQUETAS = {
   DERECHA: ['bi-arrow-right-circle-fill', 'Derecha'],
   BRAZO_SUBIR: ['bi-arrow-bar-up', 'Brazo arriba'],
   BRAZO_BAJAR: ['bi-arrow-bar-down', 'Brazo abajo'],
-  GARRA_ABRIR: ['bi-arrows-angle-expand', 'Abrir garra'],
-  GARRA_CERRAR: ['bi-arrows-angle-contract', 'Cerrar garra'],
+  GARRA_IZQUIERDA: ['bi-arrows-angle-expand', 'Garra izquierda'],
+  GARRA_DERECHA: ['bi-arrows-angle-contract', 'Garra derecha'],
   ENCENDIDO: ['bi-power', 'Encendido'],
   VELOCIDAD: ['bi-speedometer2', 'Velocidad'],
   SONIDO: ['bi-volume-up-fill', 'Sonido'],
   LUCES: ['bi-lightbulb-fill', 'Luces'],
   DETENER: ['bi-stop-circle-fill', 'Detener'],
 };
+
 
 const SIN_ORDEN = ['bi-hourglass-split', 'Sin orden'];
 
@@ -31,24 +32,52 @@ export function iniciarPanelGestos({ panel, servicio }) {
     chip.dataset.tono = tono;
   };
 
-  servicio.emisor.on('estado', (e) => {
-    panel.dataset.estado = e;
-    estado.textContent = e === 'cargando' ? 'Cargando detector…' : e === 'activo' ? 'Cámara activa' : 'Inactivo';
-    if (e !== 'activo') {
-      ctx.clearRect(0, 0, lienzo.width, lienzo.height);
-      pintarChip(SIN_ORDEN, 'neutro'); aviso.textContent = '';
-      armado = false;
-    }
-  });
 
   servicio.emisor.on('puntos', (m) => {
     ctx.clearRect(0, 0, lienzo.width, lienzo.height);
-    if (!m) return;
-    ctx.fillStyle = armado ? '#3ee58a' : '#ffbf3c';
+    if (!m || m.length !== 21) return;
+
+    const conexiones = [
+      [0, 1], [1, 2], [2, 3], [3, 4],
+      [0, 5], [5, 6], [6, 7], [7, 8],
+      [5, 9], [9, 10], [10, 11], [11, 12],
+      [9, 13], [13, 14], [14, 15], [15, 16],
+      [13, 17], [17, 18], [18, 19], [19, 20],
+      [0, 17]
+    ];
+
+    const tono = armado ? '#3ee58a' : '#ffbf3c';
+
+    // Unir cada punto con su articulación correspondiente
+    ctx.strokeStyle = tono;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+
+    for (const [a, b] of conexiones) {
+      ctx.beginPath();
+      ctx.moveTo(m[a].x * lienzo.width, m[a].y * lienzo.height);
+      ctx.lineTo(m[b].x * lienzo.width, m[b].y * lienzo.height);
+      ctx.stroke();
+    }
+
+    // Dibujar las articulaciones encima de las líneas
     for (const p of m) {
-      ctx.beginPath(); ctx.arc(p.x * lienzo.width, p.y * lienzo.height, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(
+        p.x * lienzo.width,
+        p.y * lienzo.height,
+        3,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = tono;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
   });
+
 
   servicio.emisor.on('lectura', ({ clave, mano, armado: a, actual }) => {
     armado = a;

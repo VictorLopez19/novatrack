@@ -56,8 +56,8 @@ export const CONFIG = Object.freeze({
     DERECHA: ['DERECHA', 'GIRAR_DERECHA', 'GIRO_DERECHA'],
     BRAZO_SUBIR: ['SUBIR_BRAZO', 'BRAZO_SUBIR', 'BRAZO_ARRIBA'],
     BRAZO_BAJAR: ['BAJAR_BRAZO', 'BRAZO_BAJAR', 'BRAZO_ABAJO'],
-    GARRA_ABRIR: ['GIRAR_GARRA_IZQUIERDA'],
-    GARRA_CERRAR: ['GIRAR_GARRA_DERECHA'],
+    GARRA_IZQUIERDA: ['GIRAR_GARRA_IZQUIERDA', 'GARRA_IZQUIERDA', 'GIRO_GARRA_IZQUIERDA', 'GIRAR_GARRA_IZQ', 'ABRIR_GARRA'],
+    GARRA_DERECHA: ['GIRAR_GARRA_DERECHA', 'GARRA_DERECHA', 'GIRO_GARRA_DERECHA', 'GIRAR_GARRA_DER', 'CERRAR_GARRA'],
     SONIDO: ['SONIDO', 'CLAXON', 'BOCINA'],
     VELOCIDAD: ['VELOCIDAD', 'CAMBIAR_VELOCIDAD'],
     ENCENDIDO: ['ENCENDIDO', 'ENCENDER', 'APAGAR'],
@@ -86,8 +86,8 @@ export const CONFIG = Object.freeze({
       mapa: Object.freeze({
         arriba: 'BRAZO_SUBIR',
         abajo: 'BRAZO_BAJAR',
-        izquierda: 'GARRA_ABRIR',
-        derecha: 'GARRA_CERRAR'
+        izquierda: 'GARRA_IZQUIERDA',
+        derecha: 'GARRA_DERECHA'
       }),
     }),
   }),
@@ -128,8 +128,8 @@ export const CONFIG = Object.freeze({
       DERECHA: ['derecha', 'derecho'],
       BRAZO_SUBIR: ['sube', 'subir', 'levanta', 'levantar', 'arriba', 'brazo'],
       BRAZO_BAJAR: ['baja', 'bajar', 'abajo', 'brazo'],
-      GARRA_ABRIR: ['garra izquierda', 'pala izquierda', 'gira garra izquierda'],
-      GARRA_CERRAR: ['garra derecha', 'pala derecha', 'gira garra derecha'],
+      GARRA_IZQUIERDA: ['garra izquierda', 'pala izquierda', 'gira garra izquierda', 'gira pala izquierda'],
+      GARRA_DERECHA: ['garra derecha', 'pala derecha', 'gira garra derecha', 'gira pala derecha'],
       SONIDO: ['sonido', 'claxon', 'bocina', 'pita', 'pitar'],
       VELOCIDAD: ['velocidad', 'rapido', 'lento', 'acelera'],
       ENCENDIDO: ['enciende', 'encender', 'apaga', 'apagar', 'encendido', 'prende', 'prender'],
@@ -154,8 +154,8 @@ export const CONFIG = Object.freeze({
     unicos: ['ENCENDIDO', 'VELOCIDAD', 'SONIDO', 'LUCES'],
     mapa: {               // izquierda y derecha son las del usuario
       indice: { arriba: 'AVANZAR', abajo: 'RETROCEDER', izquierda: 'IZQUIERDA', derecha: 'DERECHA' },
-      puno: { arriba: 'BRAZO_SUBIR', abajo: 'BRAZO_BAJAR', izquierda: 'GARRA_ABRIR', derecha: 'GARRA_CERRAR' },
-      cuernitos: 'ENCENDIDO', v: 'VELOCIDAD', tres: 'SONIDO', ok: 'LUCES',
+      dosDedos: { arriba: 'BRAZO_SUBIR', abajo: 'BRAZO_BAJAR', izquierda: 'GARRA_IZQUIERDA', derecha: 'GARRA_DERECHA' },
+      cuernitos: 'ENCENDIDO', puno: 'VELOCIDAD', tres: 'SONIDO', ok: 'LUCES',
     },
   }),
 
