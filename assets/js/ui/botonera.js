@@ -11,10 +11,12 @@ export class Botonera {
   #vozOk;
   #alGestos;
   #gestosOk;
+  #alGiro;
+  #giroOk;
   #btns = new Map();
 
   // Inicializa la botonera, registra eventos y actualiza su estado.
-  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk }) {
+  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk, alGiro, giroOk }) {
     this.#cont = contenedor;
     this.#cfg = botones;
     this.#servicio = servicio;
@@ -24,6 +26,8 @@ export class Botonera {
     this.#vozOk = vozOk;
     this.#alGestos = alGestos;
     this.#gestosOk = gestosOk;
+    this.#alGiro = alGiro;
+    this.#giroOk = giroOk;
 
     this.#render();
 
@@ -86,6 +90,8 @@ export class Botonera {
           this.#alVoz();
         } else if (b.tipo === 'gesto') {
           this.#alGestos();
+        } else if (b.tipo === 'giro') {
+          this.#alGiro();
         }
 
       });
@@ -114,6 +120,11 @@ export class Botonera {
         ok = hayVeh && libre && this.#gestosOk;
         if (!this.#gestosOk)
           motivo = 'Tu navegador no permite usar la cámara';
+      } else if (b.tipo === 'giro') {
+        ok = hayVeh && libre && this.#giroOk;
+
+        if (!this.#giroOk)
+          motivo = 'Tu dispositivo no tiene giroscopio';
       } else if (b.tipo === 'demo') {
         ok = hayVeh;
       } else if (!this.#servicio.puedeEnviar(b.clave)) {

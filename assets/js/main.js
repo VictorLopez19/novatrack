@@ -25,6 +25,8 @@ import { ServicioVoz, vozSoportada } from './servicios/servicioVoz.js';
 import { iniciarPanelVoz } from './ui/panelVoz.js';
 import { ServicioGestos, gestosSoportados } from './servicios/servicioGestos.js';
 import { iniciarPanelGestos } from './ui/panelGestos.js';
+import { ServicioGiroscopio, giroscopioSoportado } from './servicios/servicioGiroscopio.js';
+import { iniciarPanelGiro } from './ui/panelGiro.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -109,6 +111,7 @@ const haySesion = () => Boolean(sesion.obtenerClave());
 
 // Abre los ajustes mediante la pantalla de transición.
 function irAAjustes() {
+  if (store.get('modo') === 'giro') giro.desactivar('Sesión requerida: modo giroscopio desactivado.', 'warn');
   if (store.get('modo') === 'gesto') gestos.desactivar('Sesión requerida: modo gestos desactivado.', 'warn');
   if (store.get('modo') === 'voz') voz.desactivar('Sesión requerida: modo voz desactivado.', 'warn');
 
@@ -159,6 +162,10 @@ const gestos = new ServicioGestos({
   store, comandos, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.gestos
 });
 
+const giro = new ServicioGiroscopio({
+  store, comandos, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.giroscopio
+});
+
 // ---------- Joysticks ----------
 
 // Crea los joysticks definidos en la configuración.
@@ -202,16 +209,18 @@ const marcarJoysticks = () => {
   }
 };
 
-const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos' };
+const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos', giro: 'Giroscopio' };
 store.on('modo', (m) => {
   document.documentElement.classList.toggle('modo-voz', m === 'voz');
   document.documentElement.classList.toggle('modo-gesto', m === 'gesto');
+  document.documentElement.classList.toggle('modo-giro', m === 'giro');
   $('modo-etiqueta').textContent = ETIQUETA_MODO[m] ?? 'Manual';
   for (const j of Object.values(joysticks)) j.deshabilitar(m !== 'manual');
 });
 
 iniciarPanelVoz({ panel: $('panel-voz'), servicio: voz, store });
 iniciarPanelGestos({ panel: $('panel-gestos'), servicio: gestos });
+iniciarPanelGiro({ panel: $('panel-giro'), servicio: giro, config: CONFIG.giroscopio });
 
 // ---------- UI ----------
 
@@ -230,8 +239,10 @@ const botonera = new Botonera($('botonera'), {
   alDemo: () => panelDemo.abrir(),
   alVoz: () => voz.activar(),
   vozOk: vozSoportada,
-  alGestos: () => gestos.activar($('gesto-video')), 
+  alGestos: () => gestos.activar($('gesto-video')),
   gestosOk: gestosSoportados,
+  alGiro: () => giro.activar(), 
+  giroOk: giroscopioSoportado,
 });
 
 // Configura el diálogo de ajustes y las acciones para guardar o limpiar la selección.

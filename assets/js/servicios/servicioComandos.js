@@ -50,9 +50,9 @@ export class ServicioComandos {
     if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
     const modo = this.#store.get('modo');
-    
     if (modo !== 'manual' && !String(duenio).includes(modo)) {
-      this.#msg(`Modo ${modo === 'gesto' ? 'gestos' : 'voz'} activo: los demás controles están deshabilitados.`, 'warn'); return false;
+      const nombre = { voz: 'voz', gesto: 'gestos', giro: 'giroscopio' }[modo] ?? modo;
+      this.#msg(`Modo ${nombre} activo: los demás controles están deshabilitados.`, 'warn'); return false;
     }
 
     if (!cmd) {

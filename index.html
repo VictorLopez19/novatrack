@@ -172,6 +172,31 @@
                             aria-hidden="true"></i> Salir del modo gestos</button>
                 </div>
 
+
+                <div id="panel-giro" class="panel-giro" aria-live="polite">
+                    <div class="voz-cab">
+                        <span class="voz-badge"><i class="bi bi-phone-fill voz-mic" aria-hidden="true"></i>
+                            Giroscopio</span>
+                        <span id="giro-estado" class="voz-estado">Calibrando…</span>
+                    </div>
+                    <div class="giro-nivel" aria-hidden="true">
+                        <span class="giro-zona umb"></span>
+                        <span class="giro-zona lib"></span>
+                        <span id="giro-punto" class="giro-punto"></span>
+                    </div>
+                    <div id="giro-prog" class="giro-prog" hidden><i id="giro-prog-barra"></i></div>
+                    <p id="giro-chip" class="gesto-chip" data-tono="neutro"><i class="bi bi-hourglass-split"
+                            aria-hidden="true"></i> <span>Sin orden</span></p>
+                    <p id="giro-aviso" class="gesto-aviso"></p>
+                    <p id="giro-datos" class="giro-datos"></p>
+                    <div class="giro-botones">
+                        <button id="btn-giro-calibrar" class="btn-d" type="button">Recalibrar</button>
+                        <button id="btn-giro-reactivar" class="btn-d btn-d-peligro" type="button"
+                            hidden>Reactivar</button>
+                        <button id="btn-giro-salir" class="btn-d" type="button">Salir</button>
+                    </div>
+                </div>
+
                 <button id="btn-detener" class="btn-detener" type="button" aria-label="DETENER (tecla Escape)">
                     <i class="bi bi-stop-circle-fill" aria-hidden="true"></i>
                     DETENER

@@ -98,7 +98,7 @@ export const CONFIG = Object.freeze({
     // Botones de funciones pendientes de integración.
     { fila: 1, tipo: 'voz', etiqueta: 'Voz', icono: 'bi-mic-fill', tono: 'morado' },
     { fila: 1, tipo: 'gesto', etiqueta: 'Gestos', icono: 'bi-hand-index-thumb-fill', tono: 'morado' },
-    { fila: 1, tipo: 'pendiente', etiqueta: 'Giroscopio', icono: 'bi-phone-fill', tono: 'morado' },
+    { fila: 1, tipo: 'giro', etiqueta: 'Giroscopio', icono: 'bi-phone-fill', tono: 'morado' },
 
     // Botones asociados a comandos disponibles en el catálogo.
     { fila: 2, tipo: 'comando', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', tono: 'azul' },
@@ -159,4 +159,16 @@ export const CONFIG = Object.freeze({
     },
   }),
 
+  giroscopio: Object.freeze({
+    umbral: 18,             // grados de inclinación para empezar a mover
+    liberacion: 12,         // por debajo de estos grados se suelta la orden (histéresis)
+    filtro: 0.2,            // suavizado de las lecturas (0 a 1; menor = más suave)
+    calibracionMs: 3000,    // tiempo con el teléfono quieto al calibrar
+    sinSensorMs: 2000,      // sin lecturas en este tiempo: se asume que no hay giroscopio
+    umbralSacudida: 25,     // aceleración (m/s²) que activa la parada de emergencia
+    sacudidaPausaMs: 1800,  // tiempo mínimo entre dos paradas de emergencia
+    invertirAdelante: false, // pon true si adelante/atrás sale al revés
+    invertirLateral: false,  // pon true si izquierda/derecha sale al revés
+    rangoVisual: 30,        // grados que recorre el punto del indicador
+  }),
 });
