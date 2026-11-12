@@ -49,6 +49,10 @@ export class ServicioComandos {
 
     if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
+    if (this.#store.get('modo') === 'voz' && !String(duenio).includes('voz')) {
+      this.#msg('Modo voz activo: los demás controles están deshabilitados.', 'warn'); return false;
+    }
+
     if (!cmd) {
       this.#msg(`El comando ${clave} no existe en el catálogo.`, 'error');
       this.#estado(clave, 'error');
@@ -153,10 +157,12 @@ export class ServicioComandos {
     this.#claveActual = null;
     this.#duenio = null;
 
-    if (this.#store.get('demo').estado !== 'libre') {
-      await this.#cancelarDemo();
-      return true;
-    }
+    const demo = this.#store.get('demo');
+
+    if (demo.estado !== 'libre' && demo.modo === 'ia') {
+      this.#msg('Una orden de IA no se puede cancelar: se envía DETENER, pero la secuencia puede continuar.', 'warn');
+    } else if (demo.estado !== 'libre') { await this.#cancelarDemo(); return true; }
+    
 
     if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 

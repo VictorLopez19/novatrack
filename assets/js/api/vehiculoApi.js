@@ -127,4 +127,12 @@ export class VehiculoApi {
             }
         });
     }
+
+    // Solicita la ejecución de movimientos por IA
+    async ejecutarIA(idVehiculo, texto) {
+        const campo = this.#ep.iaCampo || 'instruccion';
+        const r = await this.#http.post(this.#ep.ia(idVehiculo), { cuerpo: { [campo]: texto }, timeoutMs: 20000 });
+        if (!esObjeto(r)) throw new ErrorApi('formato', 'Respuesta de la IA inválida.');
+        return { mensaje: typeof r.mensaje === 'string' ? r.mensaje.slice(0, 160) : '' };
+    }
 }

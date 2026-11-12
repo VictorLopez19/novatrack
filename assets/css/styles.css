@@ -408,6 +408,10 @@ html.mantener-vertical .aviso-giro { display: none; }
   .zona-et { font-size: .75rem; }
   .pie { padding: .15rem 1rem; font-size: .7rem; position: sticky; bottom: 0; z-index: 5; background: #03112c;}
   .barra::after { display: none; }
+
+  .panel-voz { padding: .3rem .6rem; gap: .2rem; }
+  .voz-onda, .voz-pista, .voz-ia-nota { display: none; }
+  .voz-burbuja { padding: .2rem .55rem; font-size: .75rem; }
 }
 
 @media (max-height: 520px) {
@@ -476,3 +480,49 @@ html.mantener-vertical .aviso-giro { display: none; }
 @keyframes splash-seguro { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 @keyframes splash-flota { 50% { transform: translateY(-6px); } }
 
+
+
+/* Modo voz */
+.modo-etiqueta { padding-left: .5rem; border-left: 1px solid rgba(140, 192, 255, .4); font-size: .85rem; font-weight: 700; }
+.modo-voz .modo-etiqueta { color: var(--morado); }
+
+.modo-voz .botonera { display: none; }
+.modo-voz .joystick { opacity: .3; filter: grayscale(.6); pointer-events: none; }
+
+.panel-voz { display: none; flex-direction: column; align-items: center; gap: .4rem; width: 100%; max-width: 320px; padding: .6rem .8rem; border: 1px solid var(--morado); border-radius: 16px; background: linear-gradient(160deg, rgba(60, 30, 130, .38), rgba(4, 18, 47, .6)); box-shadow: 0 0 16px rgba(185, 160, 255, .3); }
+.modo-voz .panel-voz { display: flex; }
+.panel-voz .btn-d { flex: none; min-height: 38px; }
+.panel-voz[data-estado="ia"] { border-color: var(--naranja); box-shadow: 0 0 16px rgba(255, 176, 32, .3); }
+
+.voz-cab { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; }
+.voz-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .15rem .6rem; border: 1px solid var(--morado); border-radius: 999px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.voz-mic { color: var(--morado); }
+.panel-voz[data-estado="procesando"] .voz-mic { color: var(--warn); }
+.panel-voz[data-estado="ia"] .voz-mic { color: var(--naranja); }
+.voz-estado { font-size: .8rem; color: var(--muted); }
+
+.voz-onda { display: flex; align-items: center; justify-content: center; gap: 3px; height: 22px; }
+.voz-onda i { width: 4px; height: 6px; border-radius: 2px; background: var(--morado); opacity: .45; }
+.panel-voz[data-estado="escuchando"] .voz-onda i { opacity: 1; animation: onda 1s ease-in-out infinite; }
+.voz-onda i:nth-child(2) { animation-delay: .12s; } .voz-onda i:nth-child(3) { animation-delay: .24s; }
+.voz-onda i:nth-child(4) { animation-delay: .36s; } .voz-onda i:nth-child(5) { animation-delay: .48s; }
+@keyframes onda { 50% { height: 22px; } }
+
+.voz-chat { display: flex; flex-direction: column; gap: .3rem; width: 100%; }
+.voz-burbuja { margin: 0; max-width: 92%; padding: .35rem .7rem; font-size: .82rem; overflow-wrap: anywhere; border-radius: 12px; }
+.voz-burbuja[hidden] { display: none; }
+.voz-yo { align-self: flex-end; border: 1px solid var(--azul); border-bottom-right-radius: 3px; background: rgba(47, 139, 255, .22); }
+.voz-yo.parcial { opacity: .65; font-style: italic; }
+.voz-resp { align-self: flex-start; border: 1px solid var(--muted); border-bottom-left-radius: 3px; background: rgba(255, 255, 255, .07); }
+.voz-resp[data-tipo="ok"] { border-color: var(--ok); }
+.voz-resp[data-tipo="warn"] { border-color: var(--warn); }
+
+.voz-ia { display: flex; flex-direction: column; gap: .2rem; width: 100%; }
+.voz-ia[hidden] { display: none; }
+.voz-ia-barra { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.voz-ia-barra i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--naranja); transition: width .3s ease; }
+.voz-ia-barra.indeterminada i { width: 35%; animation: ia-indet 1.1s ease-in-out infinite; }
+@keyframes ia-indet { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.voz-ia small { font-size: .75rem; text-align: center; color: var(--muted); }
+.voz-ia-nota { opacity: .8; }
+.voz-pista { margin: 0; font-size: .72rem; color: var(--muted); }

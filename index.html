@@ -103,6 +103,7 @@
                 <div class="tarjeta-veh">
                     <span class="veh-et">Vehículo</span>
                     <strong id="veh-nombre">Cargando…</strong>
+                    <span id="modo-etiqueta" class="modo-etiqueta">Manual</span>
                 </div>
 
                 <div id="vehiculo-estado" class="icono-veh" data-estado="sin_confirmar" role="img"
@@ -115,6 +116,25 @@
                 </p>
 
                 <div id="botonera" class="botonera"></div>
+
+                <div id="panel-voz" class="panel-voz" aria-live="polite">
+                    <div class="voz-cab">
+                        <span class="voz-badge"><i id="voz-icono" class="bi bi-mic-fill voz-mic" aria-hidden="true"></i>
+                            Modo voz</span>
+                        <span id="voz-estado" class="voz-estado">Escuchando…</span>
+                    </div>
+                    <div class="voz-onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="voz-chat">
+                        <p id="voz-texto" class="voz-burbuja voz-yo" hidden></p>
+                        <p id="voz-resultado" class="voz-burbuja voz-resp" hidden></p>
+                    </div>
+                    <div id="voz-ia" class="voz-ia" hidden>
+                        <div id="voz-ia-barra" class="voz-ia-barra"><i id="voz-ia-prog"></i></div>
+                        <small id="voz-ia-paso"></small>
+                    </div>
+                    <p class="voz-pista">Prueba: avanza · alto · baila</p>
+                    <button id="btn-voz-salir" class="btn-d" type="button">Salir del modo voz</button>
+                </div>
 
                 <button id="btn-detener" class="btn-detener" type="button" aria-label="DETENER (tecla Escape)">
                     <i class="bi bi-stop-circle-fill" aria-hidden="true"></i>

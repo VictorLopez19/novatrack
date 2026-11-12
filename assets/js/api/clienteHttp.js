@@ -26,6 +26,8 @@ const MENSAJES = {
     422: 'Los datos enviados no son válidos',
     500: 'Error interno del servidor',
     503: 'Base de datos no disponible; intenta más tarde',
+    429: 'Se alcanzó el límite gratuito de la IA. Intenta más tarde.',
+    502: 'La IA falló o devolvió una respuesta inválida.',
 };
 
 /**
@@ -40,7 +42,7 @@ export class ClienteHttp {
      * Inicializa el cliente HTTP con la configuración del servidor,
      * el tiempo de espera y las funciones auxiliares.
      */
-    constructor({ baseUrl, timeoutMs, obtenerClave = () => '', alRespuesta = () => {} }) {
+    constructor({ baseUrl, timeoutMs, obtenerClave = () => '', alRespuesta = () => { } }) {
         const base = String(baseUrl).replace(/\/+$/, '');
 
         // Evita conexiones HTTP inseguras cuando la aplicación utiliza HTTPS.

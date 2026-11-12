@@ -21,6 +21,8 @@ import { crearTransicion } from './ui/transicion.js';
 import { iniciarTemporizador } from './ui/temporizadorSesion.js';
 import { mostrarSplash } from './ui/splash.js';
 import { iniciarPantallaCompleta } from './ui/pantallaCompleta.js';
+import { ServicioVoz, vozSoportada } from './servicios/servicioVoz.js';
+import { iniciarPanelVoz } from './ui/panelVoz.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -41,6 +43,7 @@ const store = crearStore({
   vehiculoFlag: 'sin_confirmar',
   ultimoEvento: null,
   datosListos: false,
+  modo: 'manual',
 });
 
 // Centraliza la publicación de mensajes en la interfaz.
@@ -104,6 +107,8 @@ const haySesion = () => Boolean(sesion.obtenerClave());
 
 // Abre los ajustes mediante la pantalla de transición.
 function irAAjustes() {
+  if (store.get('modo') === 'voz') voz.desactivar('Sesión requerida: modo voz desactivado.', 'warn');
+
   if (transicion.activa || $('dlg-ajustes').open) return;
 
   document.querySelectorAll('dialog[open]').forEach((d) => d.close());
@@ -141,6 +146,10 @@ conectividad = new ServicioConectividad({
   api,
   store,
   tiempos: CONFIG.tiempos,
+});
+
+const voz = new ServicioVoz({
+  api, store, comandos, demo, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.voz,
 });
 
 // ---------- Joysticks ----------
@@ -186,6 +195,13 @@ const marcarJoysticks = () => {
   }
 };
 
+store.on('modo', (m) => {
+  document.documentElement.classList.toggle('modo-voz', m === 'voz');
+  $('modo-etiqueta').textContent = m === 'voz' ? 'Voz' : 'Manual';
+  for (const j of Object.values(joysticks)) j.deshabilitar(m === 'voz');
+});
+iniciarPanelVoz({ panel: $('panel-voz'), servicio: voz, store });
+
 // ---------- UI ----------
 
 // Inicializa el panel de demos y la botonera de movimientos.
@@ -201,6 +217,8 @@ const botonera = new Botonera($('botonera'), {
   store,
   emisor: emisorBotones,
   alDemo: () => panelDemo.abrir(),
+  alVoz: () => voz.activar(), 
+  vozOk: vozSoportada,
 });
 
 // Configura el diálogo de ajustes y las acciones para guardar o limpiar la selección.

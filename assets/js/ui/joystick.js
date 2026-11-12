@@ -26,6 +26,7 @@ const ZONA_NEUTRA = 0.35; // fracción del radio máximo
 
 // Controla el joystick y sus eventos de interacción.
 export class Joystick {
+  #off = false;
   #raiz;
   #knob;
   #flechas = {};
@@ -117,6 +118,7 @@ export class Joystick {
 
   // Inicia la interacción cuando se presiona el joystick.
   #abajo(e) {
+    if (this.#off) return;
     if (this.#pid !== null || this.#tecla !== null) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -191,7 +193,7 @@ export class Joystick {
   #teclaAbajo(e) {
     const dir = TECLAS[e.key];
 
-    if (!dir || e.repeat || this.#pid !== null) return;
+    if (!dir || e.repeat || this.#pid !== null || this.#off) return;
 
     e.preventDefault();
     this.#tecla = e.key;
@@ -239,4 +241,12 @@ export class Joystick {
 
     this.#cb.alSoltar(); // siempre solicita DETENER al soltar
   }
+
+  deshabilitar(v) {
+    this.#off = v;
+    this.#raiz.setAttribute('aria-disabled', String(v));
+    this.#raiz.tabIndex = v ? -1 : 0;
+    if (v) this.#soltar();
+  }
+  
 }

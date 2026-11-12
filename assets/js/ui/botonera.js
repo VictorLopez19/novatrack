@@ -7,15 +7,19 @@ export class Botonera {
   #servicio;
   #store;
   #alDemo;
+  #alVoz;
+  #vozOk;
   #btns = new Map();
 
   // Inicializa la botonera, registra eventos y actualiza su estado.
-  constructor(contenedor, { botones, servicio, store, emisor, alDemo }) {
+  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk }) {
     this.#cont = contenedor;
     this.#cfg = botones;
     this.#servicio = servicio;
     this.#store = store;
     this.#alDemo = alDemo;
+    this.#alVoz = alVoz;
+    this.#vozOk = vozOk;
 
     this.#render();
 
@@ -65,6 +69,7 @@ export class Botonera {
 
       // Ejecuta la acción correspondiente al tipo de botón.
       btn.addEventListener('click', () => {
+
         if (b.tipo === 'demo') {
           this.#alDemo();
         } else if (b.tipo === 'comando') {
@@ -73,7 +78,10 @@ export class Botonera {
             `btn:${b.clave}`,
             'WEB_BOTON'
           );
+        } else if (b.tipo === 'voz') {
+          this.#alVoz();
         }
+
       });
 
       this.#btns.set(b, btn);
@@ -92,6 +100,10 @@ export class Botonera {
       if (b.tipo === 'pendiente') {
         ok = false;
         motivo = 'No disponible en la API actual';
+      } else if (b.tipo === 'voz') {
+        ok = hayVeh && libre && this.#vozOk;
+        if (!this.#vozOk)
+          motivo = 'Tu navegador no soporta el reconocimiento de voz';
       } else if (b.tipo === 'demo') {
         ok = hayVeh;
       } else if (!this.#servicio.puedeEnviar(b.clave)) {

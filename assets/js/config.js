@@ -41,6 +41,9 @@ export const CONFIG = Object.freeze({
     iniciarDemo: (idDemo) => `/control-demo/${idDemo}/iniciar`, // ?id_vehiculo=
     cancelarDemo: '/control-demo/cancelar',                      // ?id_vehiculo=
     ws: (id) => `/ws/vehiculos/${id}`,
+
+    ia: (id) => `/vehiculos/${id}/ia/ejecutar`,
+    iaCampo: 'instruccion', // nombre del campo de IAEntrada: confírmalo en /docs
   }),
 
   // Clave lógica -> nombres posibles en el catálogo (se normaliza: sin acentos, MAYÚSCULAS, "_").
@@ -93,7 +96,7 @@ export const CONFIG = Object.freeze({
   // Define los botones disponibles en la interfaz y sus características visuales.
   botones: Object.freeze([
     // Botones de funciones pendientes de integración.
-    { fila: 1, tipo: 'pendiente', etiqueta: 'Voz', icono: 'bi-mic-fill', tono: 'morado' },
+    { fila: 1, tipo: 'voz', etiqueta: 'Voz', icono: 'bi-mic-fill', tono: 'morado' },
     { fila: 1, tipo: 'pendiente', etiqueta: 'Cámara', icono: 'bi-camera-fill', tono: 'morado' },
     { fila: 1, tipo: 'pendiente', etiqueta: 'Giroscopio', icono: 'bi-phone-fill', tono: 'morado' },
 
@@ -106,4 +109,34 @@ export const CONFIG = Object.freeze({
     // Botón para abrir el panel de demostraciones.
     { fila: 2, tipo: 'demo', etiqueta: 'Demo', icono: 'bi-play-fill', tono: 'naranja' },
   ]),
+
+
+  voz: Object.freeze({
+    idioma: 'es-MX',
+    depurar: true,
+    autoDetenerMs: 0, // 0 = sin auto-detención
+    movimientos: ['AVANZAR', 'RETROCEDER', 'IZQUIERDA', 'DERECHA', 'BRAZO_SUBIR', 'BRAZO_BAJAR', 'GIRAR_GARRA_IZQUIERDA', 'GIRAR_GARRA_DERECHA'],
+    urgentes: ['detente', 'detener', 'deten', 'alto', 'stop', 'frena', 'frenar', 'basta', 'parate'],
+    relleno: ['por', 'favor', 'porfa', 'ahora', 'ya', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'hacia', 'a', 'al', 'de', 'del', 'en', 'que', 'poco', 'nova', 'track', 'robot', 'excavadora', 'oye', 'eh', 'mm', 'mmm', 'ah', 'uh', 'em', 'pues', 'bueno', 'hola', 'gracias', 'ok'],
+    negaciones: ['no', 'nunca', 'tampoco', 'jamas', 'sin'],
+    neutras: ['gira', 'girar', 'giro', 'voltea', 'voltear', 'mueve', 'muevete', 'mover', 've', 'ir', 'ponte', 'pon'],
+    palabras: {
+      DETENER: ['detente', 'detener', 'deten', 'alto', 'stop', 'para', 'parar', 'frena', 'frenar', 'basta', 'parate', 'paro'],
+      AVANZAR: ['avanza', 'avanzar', 'adelante', 'frente', 'recto', 'sigue'],
+      RETROCEDER: ['retrocede', 'retroceder', 'atras', 'reversa', 'regresa', 'regresar'],
+      IZQUIERDA: ['izquierda', 'izquierdo'],
+      DERECHA: ['derecha', 'derecho'],
+      BRAZO_SUBIR: ['sube', 'subir', 'levanta', 'levantar', 'arriba', 'brazo'],
+      BRAZO_BAJAR: ['baja', 'bajar', 'abajo', 'brazo'],
+      GARRA_ABRIR: ['garra izquierda', 'pala izquierda', 'gira garra izquierda'],
+      GARRA_CERRAR: ['garra derecha', 'pala derecha', 'gira garra derecha'],
+      SONIDO: ['sonido', 'claxon', 'bocina', 'pita', 'pitar'],
+      VELOCIDAD: ['velocidad', 'rapido', 'lento', 'acelera'],
+      ENCENDIDO: ['enciende', 'encender', 'apaga', 'apagar', 'encendido', 'prende', 'prender'],
+      LUCES: ['luces', 'luz', 'focos', 'enciende', 'prende', 'apaga', 'apagar'],
+    },
+  }),
+
+
+
 });
