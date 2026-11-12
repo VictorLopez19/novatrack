@@ -2,7 +2,7 @@
 
 import { CONFIG } from './config.js';
 import { crearEmisor, crearStore, horaLocal, textoSeguro } from './core/utilidades.js';
-import { sesion } from './core/sesion.js';
+import { preferencias } from './core/preferencias.js';
 import { ClienteHttp } from './api/clienteHttp.js';
 import { VehiculoApi } from './api/vehiculoApi.js';
 import { CatalogoComandos } from './dominio/catalogo.js';
@@ -17,8 +17,6 @@ import { Ajustes } from './ui/ajustes.js';
 import { iniciarIndicadores } from './ui/indicadores.js';
 import { iniciarMensajes } from './ui/mensajes.js';
 import { iniciarAvisoGiro } from './ui/avisoGiro.js';
-import { crearTransicion } from './ui/transicion.js';
-import { iniciarTemporizador } from './ui/temporizadorSesion.js';
 import { mostrarSplash } from './ui/splash.js';
 import { iniciarPantallaCompleta } from './ui/pantallaCompleta.js';
 import { ServicioVoz, vozSoportada } from './servicios/servicioVoz.js';
@@ -57,12 +55,6 @@ const msg = (texto, tipo = 'info') => store.set('mensaje', {
   id: Date.now() + Math.random(),
 });
 
-// Configura los avisos relacionados con la expiración de la sesión.
-sesion.vigilar({
-  avisar: () => msg('La clave vence en 2 minutos. Vuelve a escribirla en Ajustes.', 'warn'),
-  expirar: () => msg('La clave expiró. Escríbela de nuevo en Ajustes para enviar comandos.', 'warn'),
-});
-
 // Inicializa los créditos, mensajes e indicadores de conexión.
 $('pie-creditos').textContent = `Desarrollado por ${CONFIG.creditos.alumno} · ${CONFIG.creditos.anio}`;
 
@@ -90,7 +82,7 @@ try {
   const http = new ClienteHttp({
     baseUrl: CONFIG.apiBaseUrl,
     timeoutMs: CONFIG.tiempos.httpMs,
-    obtenerClave: sesion.obtenerClave,
+    obtenerClave: () => CONFIG.apiKey,
     alRespuesta: (s, r) => conectividad?.alRespuestaHttp(s, r),
   });
 
@@ -105,28 +97,6 @@ try {
   throw e;
 }
 
-// Configura los elementos relacionados con la sesión requerida.
-const transicion = crearTransicion($('transicion'));
-const haySesion = () => Boolean(sesion.obtenerClave());
-
-// Abre los ajustes mediante la pantalla de transición.
-function irAAjustes() {
-  if (store.get('modo') === 'giro') giro.desactivar('Sesión requerida: modo giroscopio desactivado.', 'warn');
-  if (store.get('modo') === 'gesto') gestos.desactivar('Sesión requerida: modo gestos desactivado.', 'warn');
-  if (store.get('modo') === 'voz') voz.desactivar('Sesión requerida: modo voz desactivado.', 'warn');
-
-  if (transicion.activa || $('dlg-ajustes').open) return;
-
-  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
-
-  transicion.mostrar('Ingresando a la configuración ...', {
-    alTerminar: () => ajustes.abrir(),
-  });
-}
-
-// Inicializa el temporizador de expiración de la sesión.
-iniciarTemporizador($('temp-sesion'));
-
 // Crea el catálogo y los servicios encargados de ejecutar comandos y demos.
 const catalogo = new CatalogoComandos(CONFIG.comandos);
 const emisorBotones = crearEmisor();
@@ -134,8 +104,6 @@ const emisorBotones = crearEmisor();
 const demo = new ServicioDemo({
   api,
   store,
-  haySesion,
-  alFaltarSesion: irAAjustes,
 });
 
 const comandos = new ServicioComandos({
@@ -144,8 +112,6 @@ const comandos = new ServicioComandos({
   store,
   cancelarDemo: () => demo.cancelar(),
   emisor: emisorBotones,
-  haySesion,
-  alFaltarSesion: irAAjustes,
 });
 
 conectividad = new ServicioConectividad({
@@ -155,15 +121,15 @@ conectividad = new ServicioConectividad({
 });
 
 const voz = new ServicioVoz({
-  api, store, comandos, demo, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.voz,
+  api, store, comandos, demo, config: CONFIG.voz,
 });
 
 const gestos = new ServicioGestos({
-  store, comandos, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.gestos
+  store, comandos, config: CONFIG.gestos
 });
 
 const giro = new ServicioGiroscopio({
-  store, comandos, haySesion, alFaltarSesion: irAAjustes, config: CONFIG.giroscopio
+  store, comandos, config: CONFIG.giroscopio
 });
 
 // ---------- Joysticks ----------
@@ -251,13 +217,13 @@ const ajustes = new Ajustes({
   store,
 
   alGuardar: (id) => {
-    sesion.guardarVehiculoId(id);
+    preferencias.guardarVehiculoId(id);
 
     if (id !== store.get('vehiculoId')) cargarVehiculo(id);
   },
 
   alLimpiar: () => {
-    sesion.olvidarVehiculo();
+    preferencias.olvidarVehiculo();
 
     if (store.get('vehiculoId') !== CONFIG.vehiculoPorDefecto) {
       cargarVehiculo(CONFIG.vehiculoPorDefecto);
@@ -456,14 +422,7 @@ ws.emisor.on('estado', ({ estado }) => {
 // Programa los reintentos automáticos.
 setInterval(reintentarSiFalta, 10000);
 
-// ---------- Ajustes al iniciar ----------
-
-// Controla si el usuario ya abrió los ajustes.
-let ajustesVisto = false;
-
-$('dlg-ajustes').addEventListener('close', () => {
-  ajustesVisto = true;
-});
+// ---------- Arranque ----------
 
 // Comprueba si los servicios necesarios están disponibles.
 const serviciosListos = () =>
@@ -471,61 +430,28 @@ const serviciosListos = () =>
   store.get('ws') === 'en_linea' &&
   store.get('datosListos');
 
-// Abre los ajustes cuando los servicios estén listos.
-function abrirAjustesCuandoListo() {
-  const hayClave = () => Boolean(sesion.obtenerClave());
+// Avisa si los servicios tardan demasiado en responder tras el splash.
+function avisarSiNoResponde() {
+  if (serviciosListos()) return;
 
-  if (hayClave()) {
-    ajustesVisto = true;
-    return;
-  }
+  msg('Conectando con los servicios…', 'info');
 
-  const abrir = () => {
-    if (!ajustesVisto && !hayClave() && !$('dlg-ajustes').open) {
-      ajustes.abrir();
-    }
-
-    ajustesVisto = true;
-  };
-
-  if (serviciosListos()) {
-    abrir();
-    return;
-  }
-
-  msg('Conectando con los servicios… Ajustes se abrirá cuando estén listos.', 'info');
-
-  const aviso = setTimeout(() => {
+  setTimeout(() => {
     if (!serviciosListos()) {
       msg('Los servicios siguen sin responder. Revisa «Información».', 'warn');
     }
   }, 15000);
-
-  const offs = [];
-
-  const revisar = () => {
-    if (!serviciosListos()) return;
-
-    clearTimeout(aviso);
-    offs.forEach((f) => f());
-
-    abrir();
-  };
-
-  for (const k of ['api', 'ws', 'datosListos']) {
-    offs.push(store.on(k, revisar));
-  }
 }
 
 // Inicializa los servicios y carga el vehículo seleccionado.
 async function iniciar() {
   conectividad.iniciar();
 
-  const id = sesion.obtenerVehiculoId(CONFIG.vehiculoPorDefecto);
+  const id = preferencias.obtenerVehiculoId(CONFIG.vehiculoPorDefecto);
 
   store.set('vehiculoId', id);
 
-  mostrarSplash($('splash')).then(abrirAjustesCuandoListo);
+  mostrarSplash($('splash')).then(avisarSiNoResponde);
 
   cargarVehiculos();
   cargarVehiculo(id);

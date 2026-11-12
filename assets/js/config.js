@@ -1,5 +1,6 @@
 
-// Configuración única: URLs, endpoints, mapeo de comandos y botones. Sin secretos.
+// Configuración única: URLs, clave de la API, endpoints, mapeo de comandos y botones.
+// AVISO: la API Key queda visible en el código fuente publicado (riesgo asumido).
 // Si cambias las URLs, actualiza también connect-src en la meta CSP de index.html.
 
 // Define la configuración general de la aplicación y evita modificar sus propiedades.
@@ -7,6 +8,9 @@ export const CONFIG = Object.freeze({
   // Direcciones base para las conexiones con la API y el WebSocket.
   apiBaseUrl: 'https://drivecore.duckdns.org',
   wsBaseUrl: 'wss://drivecore.duckdns.org',
+
+  // Clave enviada en el encabezado X-API-Key de las operaciones protegidas.
+  apiKey: 'KNhXjdS9plM9pNS6cl86Ka4VdxoiZI472HYxnK9E0nE',
 
   // Identificador del vehículo seleccionado por defecto.
   vehiculoPorDefecto: 1,
@@ -26,7 +30,6 @@ export const CONFIG = Object.freeze({
     pongMs: 8000,
     reconexionMaxMs: 15000,
     mensajeMs: 2000,
-    claveMs: 15 * 60 * 1000,
   }),
 
   // Rutas del backend FastAPI (api_vehiculo_iot). Ajusta aquí si cambian.

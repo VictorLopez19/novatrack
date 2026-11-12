@@ -67,12 +67,6 @@
                 </span>
             </div>
 
-            <!-- Muestra el tiempo restante de la sesión. -->
-            <div id="temp-sesion" class="temp-sesion" role="timer" aria-label="Tiempo restante de la sesión" hidden>
-                <small class="txt-lg">La sesión expirará en </small>
-                <span>02:00</span>
-            </div>
-
             <!-- Agrupa las acciones generales de la aplicación. -->
             <div class="barra-acciones">
 
@@ -252,28 +246,16 @@
         </h2>
 
         <p class="ajustes-intro">
-            Elige el vehículo y escribe tu clave de acceso para poder enviar comandos.
+            Elige el vehículo que deseas controlar.
         </p>
 
         <!-- Permite seleccionar el vehículo que se desea controlar. -->
         <span id="et-vehiculo" class="form-label">Vehículo</span>
         <div id="lista-vehiculos" class="vehiculos" role="radiogroup" aria-labelledby="et-vehiculo"></div>
 
-        <!-- Permite introducir la clave de acceso a la API. -->
-        <label for="inp-clave" class="form-label mt-3">Clave de acceso</label>
-
-        <div class="clave-wrap">
-            <input id="inp-clave" class="form-control" type="password" autocomplete="off" spellcheck="false"
-                maxlength="200">
-
-            <button id="btn-ver-clave" class="btn-ojo" type="button" aria-label="Mostrar clave">
-                <i class="bi bi-eye-fill" aria-hidden="true"></i>
-            </button>
-        </div>
-
         <p id="lista-faltantes" class="faltantes"></p>
 
-        <!-- Agrupa las acciones de configuración de la sesión. -->
+        <!-- Agrupa las acciones de configuración. -->
         <div class="dialogo-acciones">
 
             <button id="btn-guardar" class="btn-d btn-d-primario" type="button">
@@ -281,7 +263,7 @@
             </button>
 
             <button id="btn-limpiar" class="btn-d btn-d-peligro" type="button">
-                Destruir sesión
+                Restablecer
             </button>
 
             <button id="btn-cerrar-ajustes" class="btn-d" type="button">

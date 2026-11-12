@@ -19,8 +19,8 @@ export class ErrorApi extends Error {
  */
 const MENSAJES = {
     400: 'La solicitud no es válida',
-    401: 'No se ha configurado la clave de acceso.',
-    403: 'La clave de acceso no es válida',
+    401: 'Falta la API Key (revisa apiKey en config.js).',
+    403: 'La API Key no es válida (revisa apiKey en config.js).',
     404: 'El recurso no existe',
     409: 'La operación no es posible en el estado actual',
     422: 'Los datos enviados no son válidos',

@@ -1,14 +1,9 @@
-// Ajustes: vehículo (tarjetas) y sesión (API Key en sessionStorage, nunca en el código).
-// Guardar, Limpiar datos y Cerrar validan, informan en el chat y cierran el modal.
-import { sesion } from '../core/sesion.js';
-
-const MAX_CLAVE = 200;
+// Ajustes: selección del vehículo (tarjetas). La API Key se define en config.js.
+// Guardar, Restablecer y Cerrar validan, informan en el chat y cierran el modal.
 
 export class Ajustes {
   #dlg;
   #lista;
-  #clave;
-  #ver;
   #falt;
   #store;
   #alGuardar;
@@ -25,8 +20,6 @@ export class Ajustes {
     const q = (s) => dialogo.querySelector(s);
 
     this.#lista = q('#lista-vehiculos');
-    this.#clave = q('#inp-clave');
-    this.#ver = q('#btn-ver-clave');
     this.#falt = q('#lista-faltantes');
 
     // Permite seleccionar un vehículo desde su tarjeta.
@@ -40,19 +33,6 @@ export class Ajustes {
 
     // Permite navegar entre vehículos mediante el teclado.
     this.#lista.addEventListener('keydown', (e) => this.#teclado(e));
-
-    // Alterna la visibilidad de la clave de acceso.
-    this.#ver.addEventListener('click', () => {
-      const oculta = this.#clave.type === 'password';
-
-      this.#clave.type = oculta ? 'text' : 'password';
-      this.#ver.setAttribute(
-        'aria-label',
-        oculta ? 'Ocultar clave' : 'Mostrar clave'
-      );
-      this.#ver.firstElementChild.className =
-        `bi ${oculta ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`;
-    });
 
     // Registra las acciones principales del diálogo.
     q('#btn-guardar').addEventListener('click', () => this.#guardar());
@@ -68,11 +48,6 @@ export class Ajustes {
   // Abre el diálogo y prepara los datos actuales.
   abrir() {
     this.#sel = this.#store.get('vehiculoId');
-    this.#clave.value = '';
-    this.#clave.type = 'password';
-    this.#ver.firstElementChild.className = 'bi bi-eye-fill';
-
-    this.#pintarClave();
     this.#pintar();
 
     if (!this.#dlg.open) this.#dlg.showModal();
@@ -85,12 +60,6 @@ export class Ajustes {
       tipo,
       id: Date.now() + Math.random()
     });
-  }
-
-  // Indica si existe una clave guardada en la sesión.
-  #pintarClave() {
-    const min = sesion.minutosRestantes();
-    this.#clave.placeholder = min ? `La sesión vence en ${min} min` : 'Ingresa la clave de acceso';
   }
 
   // Obtiene la lista de vehículos o utiliza el vehículo actual como alternativa.
@@ -217,68 +186,35 @@ export class Ajustes {
     );
   }
 
-  // Valida y guarda el vehículo seleccionado y la clave de acceso.
+  // Valida y guarda el vehículo seleccionado.
   #guardar() {
     const lista = this.#store.get('vehiculos');
     const id = this.#sel;
-    const clave = this.#clave.value.trim();
-    let guardado = false;
 
-    // Valida que el vehículo seleccionado sea válido y esté activo.
     if (!Number.isInteger(id) || id <= 0) {
       this.#msg('Selecciona un vehículo para guardar.', 'error');
-    } else if (
-      lista.length &&
-      !lista.some((v) => v.id === id && v.activo)
-    ) {
+      return;
+    }
+
+    if (lista.length && !lista.some((v) => v.id === id && v.activo)) {
       this.#msg('El vehículo elegido no existe o está inactivo.', 'error');
-    } else {
-      this.#alGuardar(id);
-      guardado = true;
+      return;
     }
 
-    // Valida y guarda la clave de acceso cuando se proporciona.
-    if (clave) {
-      if (clave.length > MAX_CLAVE || /\s/.test(clave)) {
-        this.#msg(
-          'La clave no puede tener espacios ni más de 200 caracteres.',
-          'error'
-        );
-      } else {
-        sesion.guardarClave(clave);
-        guardado = true;
-      }
-    }
-
-    if (guardado) this.#msg('Ajustes guardados.', 'ok');
-
-    if (!sesion.obtenerClave()) {
-      this.#msg('Sin clave: podrás consultar, pero no enviar comandos.', 'warn');
-    }
-
+    this.#alGuardar(id);
+    this.#msg('Ajustes guardados.', 'ok');
     this.#dlg.close();
   }
 
-  // Elimina la clave de acceso y restablece el vehículo guardado.
+  // Olvida el vehículo guardado y vuelve al predeterminado.
   #limpiar() {
-    sesion.borrarClave();
-    this.#alLimpiar(); // olvida el vehículo guardado y vuelve al predeterminado
-
-    if (sesion.obtenerClave()) {
-      this.#msg('No se pudo borrar la clave de esta pestaña.', 'error');
-    } else {
-      this.#msg('Datos borrados: clave y vehículo guardado.', 'ok');
-    }
-
+    this.#alLimpiar();
+    this.#msg('Vehículo restablecido al predeterminado.', 'ok');
     this.#dlg.close();
   }
 
-  // Cierra el diálogo y advierte si no hay una clave guardada.
+  // Cierra el diálogo sin guardar cambios.
   #cerrar() {
-    if (!sesion.obtenerClave()) {
-      this.#msg('Sin clave guardada: solo podrás consultar.', 'warn');
-    }
-
     this.#dlg.close();
   }
 }

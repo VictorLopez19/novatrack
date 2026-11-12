@@ -241,11 +241,6 @@ body::before { /* cuadrícula de fondo */
 .veh-check { flex: 0 0 auto; font-size: 1.3rem; color: var(--ok); opacity: 0; }
 .veh-op.sel .veh-check { opacity: 1; }
 
-.clave-wrap { position: relative; }
-.clave-wrap .form-control { padding-right: 3rem; }
-.btn-ojo { position: absolute; right: .25rem; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--muted); }
-.btn-ojo:hover { color: var(--texto); }
-#inp-clave::placeholder{color: #737373;}
 
 /* --- 6.2 Información de conectividad ---------------------------------- */
 #t-info i { margin-right: .3rem; color: var(--azul-cl); }
@@ -444,13 +439,6 @@ html.mantener-vertical .aviso-giro { display: none; }
 }
 
 
-/* Temporizador de sesión (últimos 2 minutos) */
-.temp-sesion { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; padding: .25rem .7rem; border: 1px solid var(--warn); border-radius: 999px; background: rgba(255, 191, 60, .12); font-size: .85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.temp-sesion[hidden] { display: none; }
-.temp-sesion i { color: var(--warn); }
-.temp-sesion.urgente { border-color: var(--err); background: rgba(255, 107, 122, .15); animation: pulso-temp 1s ease-in-out infinite; }
-.temp-sesion.urgente i { color: var(--err); }
-@keyframes pulso-temp { 50% { opacity: .55; } }
 
 /* Transición «Cargando…» */
 .transicion { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: rgba(2, 10, 28, .82); backdrop-filter: blur(4px); opacity: 0; transition: opacity .25s; }

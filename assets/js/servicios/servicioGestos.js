@@ -21,13 +21,13 @@ async function cargarMediaPipe(cfg) {
 
 export class ServicioGestos {
   emisor = crearEmisor(); // 'estado' (cargando|activo|inactivo), 'lectura', 'puntos'
-  #store; #comandos; #haySesion; #alFaltarSesion; #cfg; #cargarModelo;
+  #store; #comandos; #cfg; #cargarModelo;
   #activo = false; #gen = 0; #modelo = null; #stream = null; #video = null; #filtro = null;
   #raf = 0; #ultimoCuadro = 0; #ultimoT = -1;
 
-  constructor({ store, comandos, haySesion, alFaltarSesion, config, cargarModelo = cargarMediaPipe }) {
-    this.#store = store; this.#comandos = comandos; this.#haySesion = haySesion;
-    this.#alFaltarSesion = alFaltarSesion; this.#cfg = config; this.#cargarModelo = cargarModelo;
+  constructor({ store, comandos, config, cargarModelo = cargarMediaPipe }) {
+    this.#store = store; this.#comandos = comandos;
+    this.#cfg = config; this.#cargarModelo = cargarModelo;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.desactivar('La pestaña pasó a segundo plano: modo gestos desactivado.', 'warn');
     });
@@ -42,7 +42,6 @@ export class ServicioGestos {
     if (this.#store.get('modo') !== 'manual') { this.#msg('Sal del modo actual antes de activar los gestos.', 'warn'); return false; }
     if (!this.#store.get('vehiculoId')) { this.#msg('Selecciona un vehículo en Ajustes.', 'error'); return false; }
     if (this.#store.get('demo').estado !== 'libre') { this.#msg('Hay una DEMO o una orden de IA en curso. Espera a que termine.', 'warn'); return false; }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
     const gen = ++this.#gen;
     const cancelado = () => !this.#activo || gen !== this.#gen;

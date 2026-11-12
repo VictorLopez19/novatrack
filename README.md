@@ -54,8 +54,8 @@ Diseñar, desarrollar, integrar y publicar una aplicación web responsiva que pe
 - Recepción de eventos en tiempo real mediante WebSocket seguro.
 - Reconexión automática ante interrupciones de comunicación.
 - Indicadores del estado de conexión.
-- Configuración del vehículo y de la clave de acceso.
-- Control de sesión y temporizador de expiración.
+- Selección del vehículo desde Ajustes.
+- API Key definida en `config.js`.
 - Mensajes de confirmación, advertencia y error.
 - Botón de detención de emergencia.
 - Compatibilidad con pantallas táctiles y controles mediante teclado.
@@ -87,7 +87,7 @@ novatrack/
     │
     ├── core/
     │   ├── utilidades.js
-    │   └── sesion.js
+    │   └── preferencias.js
     │
     ├── api/
     │   ├── clienteHttp.js
@@ -109,7 +109,6 @@ novatrack/
         ├── ajustes.js
         ├── indicadores.js
         ├── mensajes.js
-        ├── temporizadorSesion.js
         ├── transicion.js
         ├── splash.js
         └── avisoGiro.js
@@ -129,7 +128,7 @@ La aplicación utiliza una arquitectura modular basada en la separación de resp
 | `servicios/` | Gestión de comandos, DEMO, WebSocket y conectividad. |
 | `dominio/` | Catálogo y resolución de comandos. |
 | `api/` | Comunicación HTTP con el backend. |
-| `core/` | Utilidades generales y gestión de sesión. |
+| `core/` | Utilidades generales y preferencias locales (vehículo elegido). |
 
 <p align="justify">
 El flujo de comunicación para enviar un comando comienza en la interfaz, pasa por el servicio de comandos y continúa hacia los módulos encargados de realizar la petición HTTP. Posteriormente, el backend procesa la solicitud y comunica los eventos correspondientes mediante WebSocket.
@@ -184,7 +183,7 @@ Las solicitudes de información se realizan de manera paralela. Si existe un veh
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">2. Configuración del vehículo</div>
 
 <p align="justify">
-El apartado de ajustes permite seleccionar un vehículo activo e introducir la clave de acceso requerida por el backend. La clave se conserva en sessionStorage durante la sesión de la pestaña.
+El apartado de ajustes permite seleccionar el vehículo activo. La elección se recuerda en localStorage. La clave de acceso ya no se introduce en la interfaz: se define en `config.js`.
 </p>
 
 <p align="justify">
@@ -219,7 +218,7 @@ Los botones presentan diferentes estados visuales para indicar si un comando est
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">5. Gestión de comandos</div>
 
 <p align="justify">
-Antes de enviar un comando, el servicio correspondiente verifica que exista un vehículo seleccionado, que la sesión sea válida, que el comando esté disponible en el catálogo y que no se encuentre activa una DEMO.
+Antes de enviar un comando, el servicio correspondiente verifica que exista un vehículo seleccionado, que el comando esté disponible en el catálogo y que no se encuentre activa una DEMO.
 </p>
 
 <p align="justify">
@@ -285,14 +284,10 @@ El apartado de información presenta el estado de la conexión WebSocket, la dis
 La disponibilidad de la API se comprueba periódicamente y también cuando se recupera la conexión de red o se vuelve a la pestaña. La información de la base de datos se considera sin verificar cuando no existe un endpoint específico para comprobarla.
 </p>
 
-<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10. Sesión y seguridad</div>
+<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10. Clave de acceso y seguridad</div>
 
 <p align="justify">
-La clave de acceso se envía mediante el encabezado HTTP X-API-Key en las operaciones protegidas. Se almacena en sessionStorage y tiene una vigencia de 30 minutos desde su guardado.
-</p>
-
-<p align="justify">
-La aplicación muestra avisos cuando se aproxima la expiración de la sesión. Durante los últimos dos minutos se presenta una advertencia mediante el temporizador y los mensajes de la interfaz.
+La clave de acceso se define en `CONFIG.apiKey` (`assets/js/config.js`) y se envía mediante el encabezado HTTP X-API-Key en las operaciones protegidas. Al estar en el código, cualquiera que abra el sitio publicado puede verla; es un riesgo asumido de forma consciente.
 </p>
 
 <p align="justify">
@@ -503,8 +498,7 @@ El archivo <code>.nojekyll</code> permite evitar el procesamiento de Jekyll y fa
 - La aplicación requiere conexión a Internet para comunicarse con el backend desplegado.
 - El servidor debe permitir las conexiones REST y WebSocket desde el dominio de publicación.
 - Las operaciones protegidas requieren una clave API válida.
-- La clave se conserva en `sessionStorage` y no se comparte entre pestañas.
-- La sesión de la aplicación tiene una vigencia de 30 minutos desde que se guarda la clave.
+- La clave se define en `config.js` y es visible en el código publicado.
 - La confirmación HTTP de una solicitud no garantiza que el movimiento se haya ejecutado físicamente.
 - Los eventos WebSocket confirman información procesada o comunicada por el backend, pero no necesariamente la ejecución física del mecanismo.
 - La conexión WebSocket del navegador no garantiza que el ESP32 esté conectado.

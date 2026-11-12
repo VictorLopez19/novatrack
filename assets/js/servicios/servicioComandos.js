@@ -2,7 +2,7 @@
 // Aplica validación común, prioridad al último movimiento y control exclusivo.
 
 export class ServicioComandos {
-  #api; #catalogo; #store; #cancelarDemo; #emisor; #haySesion; #alFaltarSesion;
+  #api; #catalogo; #store; #cancelarDemo; #emisor;
 
   #enVuelo = null;          // Movimiento que se está enviando.
   #pendiente = null;        // Último movimiento solicitado mientras hay uno en curso.
@@ -13,10 +13,9 @@ export class ServicioComandos {
   #stopDuranteVuelo = false;
 
   // Inicializa las dependencias del servicio.
-  constructor({ api, catalogo, store, cancelarDemo, emisor, haySesion, alFaltarSesion }) {
+  constructor({ api, catalogo, store, cancelarDemo, emisor }) {
     this.#api = api; this.#catalogo = catalogo; this.#store = store;
     this.#cancelarDemo = cancelarDemo; this.#emisor = emisor;
-    this.#haySesion = haySesion; this.#alFaltarSesion = alFaltarSesion;
   }
   // Comprueba si el comando existe en el catálogo.
   puedeEnviar(clave) {
@@ -46,8 +45,6 @@ export class ServicioComandos {
       this.#msg('Selecciona un vehículo en Ajustes.', 'error');
       return false;
     }
-
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
     const modo = this.#store.get('modo');
     if (modo !== 'manual' && !String(duenio).includes(modo)) {
@@ -164,9 +161,6 @@ export class ServicioComandos {
     if (demo.estado !== 'libre' && demo.modo === 'ia') {
       this.#msg('Una orden de IA no se puede cancelar: se envía DETENER, pero la secuencia puede continuar.', 'warn');
     } else if (demo.estado !== 'libre') { await this.#cancelarDemo(); return true; }
-
-
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
     // Solicita otro DETENER cuando termine el movimiento en curso.
     if (this.#enVuelo) this.#stopDuranteVuelo = true;

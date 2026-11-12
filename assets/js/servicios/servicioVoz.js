@@ -16,14 +16,14 @@ const FATALES = {
 
 export class ServicioVoz {
   emisor = crearEmisor(); // 'estado', 'parcial', 'resultado'
-  #api; #store; #comandos; #demo; #haySesion; #alFaltarSesion; #cfg;
+  #api; #store; #comandos; #demo; #cfg;
   #rec = null; #activo = false; #fallos = 0; #tAuto = null; #tReinicio = null;
   #hechos = new Set();        // resultados de voz ya procesados (por índice)
   #interinos = new Map();     // temporizadores de estabilidad de cada resultado
 
-  constructor({ api, store, comandos, demo, haySesion, alFaltarSesion, config }) {
+  constructor({ api, store, comandos, demo, config }) {
     this.#api = api; this.#store = store; this.#comandos = comandos; this.#demo = demo;
-    this.#haySesion = haySesion; this.#alFaltarSesion = alFaltarSesion; this.#cfg = config;
+    this.#cfg = config;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.desactivar('La pestaña pasó a segundo plano: modo voz desactivado.', 'warn');
     });
@@ -39,7 +39,6 @@ export class ServicioVoz {
     if (!vozSoportada) { this.#msg('Tu navegador no soporta el reconocimiento de voz. Usa Chrome, Edge o Safari.', 'error'); return false; }
     if (!this.#store.get('vehiculoId')) { this.#msg('Selecciona un vehículo en Ajustes.', 'error'); return false; }
     if (this.#store.get('demo').estado !== 'libre') { this.#msg('Hay una DEMO o una orden de IA en curso. Espera a que termine.', 'warn'); return false; }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
 
     this.#activo = true; this.#fallos = 0;
     this.#store.set('modo', 'voz'); // deshabilita joysticks, botones y DEMO
@@ -143,7 +142,6 @@ export class ServicioVoz {
     if (this.#store.get('demo').estado !== 'libre') {
       this.#resultado(texto, { aviso: 'Hay una ejecución en curso. Espera a que termine.' }); return;
     }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return; }
     clearTimeout(this.#tAuto);
     this.#demo.iniciarIA(); // bloquea los demás controles mientras la IA responde
     this.#estado('procesando');

@@ -7,11 +7,10 @@ const LIBRE = Object.freeze({ estado: 'libre' });
 const SIN_EVENTOS_IA_MS = 30000;
 
 export class ServicioDemo {
-  #api; #store; #haySesion; #alFaltarSesion; #tIA = null;
+  #api; #store; #tIA = null;
 
-  constructor({ api, store, haySesion, alFaltarSesion }) {
+  constructor({ api, store }) {
     this.#api = api; this.#store = store;
-    this.#haySesion = haySesion; this.#alFaltarSesion = alFaltarSesion;
   }
 
   #msg(texto, tipo = 'info') { this.#store.set('mensaje', { texto, tipo, id: Date.now() + Math.random() }); }
@@ -30,7 +29,6 @@ export class ServicioDemo {
   async iniciar(idDemo) {
     const idVeh = this.#store.get('vehiculoId');
     if (this.#store.get('demo').estado !== 'libre') { this.#msg('Ya hay una DEMO en curso.', 'warn'); return; }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return; }
     this.#store.set('demo', { estado: 'iniciando', idDemo });
     try {
       const r = await this.#api.iniciarDemo(idVeh, idDemo);
@@ -45,7 +43,6 @@ export class ServicioDemo {
 
   async cancelar() {
     if (this.#store.get('demo').modo === 'ia') { this.#msg('Una orden de IA no se puede cancelar.', 'warn'); return; }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return; }
     const idVeh = this.#store.get('vehiculoId');
     try {
       await this.#api.cancelarDemo(idVeh);

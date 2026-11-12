@@ -18,15 +18,15 @@ async function pedirPermisos() {
 
 export class ServicioGiroscopio {
   emisor = crearEmisor(); // 'estado', 'progreso', 'lectura'
-  #store; #comandos; #haySesion; #alFaltarSesion; #cfg;
+  #store; #comandos; #cfg;
   #activo = false; #pidiendo = false; #fase = 'inactivo'; // calibrando | sin_calibrar | activo | emergencia
   #lecturas = []; #inicioCal = 0; #tSinSensor = null;
   #base = { beta: 0, gamma: 0 }; #angBase = 0; #filtro = { beta: 0, gamma: 0 }; #filtroListo = false;
   #control = null; #claveActual = null; #aceleracion = 0; #ultimaSacudida = 0; #ultimaEmision = 0;
 
-  constructor({ store, comandos, haySesion, alFaltarSesion, config }) {
-    this.#store = store; this.#comandos = comandos; this.#haySesion = haySesion;
-    this.#alFaltarSesion = alFaltarSesion; this.#cfg = config;
+  constructor({ store, comandos, config }) {
+    this.#store = store; this.#comandos = comandos;
+    this.#cfg = config;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.desactivar('La pestaña pasó a segundo plano: modo giroscopio desactivado.', 'warn');
     });
@@ -42,7 +42,6 @@ export class ServicioGiroscopio {
     if (this.#store.get('modo') !== 'manual') { this.#msg('Sal del modo actual antes de activar el giroscopio.', 'warn'); return false; }
     if (!this.#store.get('vehiculoId')) { this.#msg('Selecciona un vehículo en Ajustes.', 'error'); return false; }
     if (this.#store.get('demo').estado !== 'libre') { this.#msg('Hay una DEMO o una orden de IA en curso. Espera a que termine.', 'warn'); return false; }
-    if (!this.#haySesion()) { this.#alFaltarSesion(); return false; }
     if (!window.isSecureContext) { this.#msg('Los sensores solo funcionan en HTTPS o localhost.', 'error'); return false; }
 
     this.#pidiendo = true;
