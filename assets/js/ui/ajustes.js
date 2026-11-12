@@ -146,7 +146,7 @@ export class Ajustes {
       const ico = document.createElement('span');
       ico.className = 'veh-ico';
       const img = document.createElement('img');
-      img.src = './img/excavadora.svg'; img.alt = ''; img.className = 'veh-img';
+      img.src = './assets/img/icons/excavadora.svg'; img.alt = ''; img.className = 'veh-img';
       ico.append(img);
 
       // Agrega el nombre y el identificador del vehículo.
