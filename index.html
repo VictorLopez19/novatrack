@@ -67,6 +67,16 @@
                 </span>
             </div>
 
+            <!-- Navega entre las secciones CONTROL y MONITOREO. -->
+            <nav class="vistas" aria-label="Secciones">
+                <a id="nav-control" class="vista-enlace" href="#/control" aria-current="page">
+                    <i class="bi bi-joystick" aria-hidden="true"></i><span>Control</span>
+                </a>
+                <a id="nav-monitoreo" class="vista-enlace" href="#/monitoreo">
+                    <i class="bi bi-activity" aria-hidden="true"></i><span>Monitoreo</span>
+                </a>
+            </nav>
+
             <!-- Agrupa las acciones generales de la aplicación. -->
             <div class="barra-acciones">
 
@@ -89,7 +99,7 @@
         </header>
 
         <!-- Distribuye los controles del vehículo en tres secciones. -->
-        <main class="tablero">
+        <main id="vista-control" class="tablero" tabindex="-1">
 
             <!-- Contiene el joystick para controlar el desplazamiento del chasis. -->
             <section class="zona zona-izq" aria-label="Control del chasis">
@@ -204,6 +214,122 @@
                 <p class="zona-et">Brazo y garra</p>
             </section>
 
+        </main>
+
+        <!-- Vista MONITOREO: estado general arriba, último movimiento a la izquierda e historial a la derecha. -->
+        <main id="vista-monitoreo" class="monitoreo" tabindex="-1" aria-labelledby="t-monitoreo" hidden>
+            <h1 id="t-monitoreo" class="visually-hidden">Monitoreo del vehículo</h1>
+
+            <!-- Franja superior: vehículo, indicadores de conectividad y avisos. -->
+            <header class="mon-cab">
+                <div class="tarjeta-veh">
+                    <span class="veh-et">Vehículo</span>
+                    <strong id="mon-veh-nombre">Cargando…</strong>
+                </div>
+
+                <h2 id="t-indicadores" class="visually-hidden">Estado de conectividad</h2>
+                <ul class="mon-estados" aria-labelledby="t-indicadores"
+                    title="Un WSS abierto no confirma la base de datos ni el vehículo físico, y una API «Disponible» no garantiza que funcionen los 21 servicios.">
+                    <li class="mon-estado" title="Sesión en tiempo real de este navegador">
+                        <i class="bi bi-broadcast" aria-hidden="true"></i>
+                        <span class="mon-estado-et">WebSocket</span>
+                        <span id="mon-chip-ws" class="chip"><i aria-hidden="true"></i><span></span></span>
+                    </li>
+                    <li class="mon-estado" title="Prueba de salud de la API de 21 servicios (GET /)">
+                        <i class="bi bi-cloud-fill" aria-hidden="true"></i>
+                        <span class="mon-estado-et">Servidor AWS</span>
+                        <span id="mon-chip-api" class="chip"><i aria-hidden="true"></i><span></span></span>
+                    </li>
+                    <li class="mon-estado" title="Diagnóstico hecho por el backend">
+                        <i class="bi bi-database-fill" aria-hidden="true"></i>
+                        <span class="mon-estado-et">Amazon RDS</span>
+                        <span id="mon-chip-rds" class="chip"><i aria-hidden="true"></i><span></span></span>
+                    </li>
+                </ul>
+
+                <p id="mon-aviso" class="mon-aviso" role="status" hidden></p>
+            </header>
+
+            <!-- Último movimiento recibido o consultado. -->
+            <section class="mon-panel mon-ultimo" aria-labelledby="t-ultimo">
+                <div class="mon-panel-cab">
+                    <h2 id="t-ultimo" class="mon-titulo">
+                        <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Último movimiento
+                    </h2>
+                    <span id="mon-recibido" class="ev-hora"></span>
+                </div>
+
+                <article id="mon-card" class="evento-card mon-card" data-estado="cargando" data-tono="gris" aria-busy="true">
+                    <span id="mon-origen" class="ev-badge" hidden>
+                        <i aria-hidden="true"></i><span></span>
+                    </span>
+
+                    <div>
+                        <p id="mon-movimiento" class="mon-movimiento" aria-live="polite" aria-atomic="true">Cargando…</p>
+                        <p id="mon-codigo" class="mon-codigo"></p>
+                    </div>
+
+                    <dl class="ev-datos">
+                        <div><dt>Fecha</dt><dd id="mon-fecha">—</dd></div>
+                        <div><dt>Hora</dt><dd id="mon-hora">—</dd></div>
+                        <div><dt>Origen</dt><dd id="mon-origen-valor">—</dd></div>
+                    </dl>
+
+                    <ul class="mon-trazas" aria-label="Confirmaciones del movimiento">
+                        <li id="traza-wss" data-estado="na"><i aria-hidden="true"></i><span></span></li>
+                        <li id="traza-rds" data-estado="na"><i aria-hidden="true"></i><span></span></li>
+                        <li id="traza-fisico" data-estado="na"><i aria-hidden="true"></i><span></span></li>
+                    </ul>
+
+                    <p id="mon-card-msg" class="mon-card-msg" role="status" hidden></p>
+                    <button id="mon-reintentar-ultimo" class="btn-d btn-mon" type="button" hidden>
+                        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Reintentar
+                    </button>
+                </article>
+
+                <!-- Actividad en tiempo real de DEMO u órdenes de IA (no es historial). -->
+                <div id="mon-actividad" class="mon-actividad" role="status" aria-live="polite" hidden>
+                    <i class="bi bi-collection-play-fill" aria-hidden="true"></i>
+                    <span id="mon-actividad-texto"></span>
+                    <time id="mon-actividad-hora" class="ev-hora"></time>
+                </div>
+            </section>
+
+            <!-- Últimos 10 movimientos individuales. -->
+            <section class="mon-panel mon-historial" aria-labelledby="t-historial">
+                <div class="mon-panel-cab">
+                    <div>
+                        <h2 id="t-historial" class="mon-titulo">
+                            <i class="bi bi-clock-history" aria-hidden="true"></i> Últimos 10 movimientos
+                        </h2>
+                        <p id="mon-hist-estado" class="mon-hist-estado" role="status"></p>
+                    </div>
+                    <button id="mon-actualizar" class="btn-d btn-mon" type="button">
+                        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Actualizar
+                    </button>
+                </div>
+
+                <div id="mon-tabla-wrap" class="tabla-wrap" tabindex="0" role="region" aria-labelledby="t-historial" data-estado="cargando">
+                    <table class="mon-tabla">
+                        <caption class="visually-hidden">Últimos diez movimientos individuales, del más reciente al más antiguo</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Movimiento</th>
+                                <th scope="col">Fecha</th>
+                                <th scope="col">Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mon-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Notas aclaratorias. -->
+            <p class="mon-notas">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                <span><span id="mon-zona"></span> Las secuencias de DEMO e IA no se guardan en el historial.</span>
+            </p>
         </main>
 
         <!-- Muestra los créditos de la aplicación. -->

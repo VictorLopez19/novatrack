@@ -32,6 +32,15 @@ export const CONFIG = Object.freeze({
     mensajeMs: 2000,
   }),
 
+  // MONITOREO. Las fechas «sin zona» (sin Z ni ±hh:mm) no se convierten salvo que sinZona sea 'utc'.
+  monitoreo: Object.freeze({
+    limiteHistorial: 10,
+    debounceSyncMs: 300,         // agrupa ráfagas de eventos en una sola consulta REST
+    ventanaOmitirSyncMs: 1500,   // no repite una sincronización recién completada
+    maxClavesDedup: 60,
+    fechas: Object.freeze({ zonaMostrar: 'America/Mexico_City', sinZona: 'tal-cual' }), // 'tal-cual' | 'utc'
+  }),
+
   // Rutas del backend FastAPI (api_vehiculo_iot). Ajusta aquí si cambian.
   endpoints: Object.freeze({
     salud: '/',
@@ -44,6 +53,8 @@ export const CONFIG = Object.freeze({
     iniciarDemo: (idDemo) => `/control-demo/${idDemo}/iniciar`, // ?id_vehiculo=
     cancelarDemo: '/control-demo/cancelar',                      // ?id_vehiculo=
     ws: (id) => `/ws/vehiculos/${id}`,
+    estado: (id) => `/vehiculos/${id}/estado`,       // MONITOREO: último estado (EstadoSalida o null)
+    historial: (id) => `/vehiculos/${id}/historial`, // MONITOREO: máx. 10 movimientos individuales, recientes primero
 
     ia: (id) => `/vehiculos/${id}/ia/ejecutar`,
     iaCampo: 'instruccion', // nombre del campo de IAEntrada: confírmalo en /docs

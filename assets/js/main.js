@@ -25,6 +25,12 @@ import { ServicioGestos, gestosSoportados } from './servicios/servicioGestos.js'
 import { iniciarPanelGestos } from './ui/panelGestos.js';
 import { ServicioGiroscopio, giroscopioSoportado } from './servicios/servicioGiroscopio.js';
 import { iniciarPanelGiro } from './ui/panelGiro.js';
+import { crearTransicion } from './ui/transicion.js';
+import { MonitoreoApi } from './api/monitoreoApi.js';
+import { ServicioMonitoreo } from './servicios/servicioMonitoreo.js';
+import { iniciarVistaMonitoreo } from './ui/vistaMonitoreo.js';
+import { iniciarIndicadoresMonitoreo } from './ui/indicadoresMonitoreo.js';
+import { iniciarNavegacion } from './vistas/navegacion.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -46,6 +52,7 @@ const store = crearStore({
   ultimoEvento: null,
   datosListos: false,
   modo: 'manual',
+  vista: 'control',
 });
 
 // Centraliza la publicación de mensajes en la interfaz.
@@ -74,6 +81,7 @@ iniciarIndicadores(store, {
 
 // Declara las referencias a los servicios principales.
 let api;
+let monitoreoApi;
 let ws;
 let conectividad;
 
@@ -87,6 +95,7 @@ try {
   });
 
   api = new VehiculoApi(http, CONFIG.endpoints, CONFIG.tiempos);
+  monitoreoApi = new MonitoreoApi(http, CONFIG.endpoints, CONFIG.monitoreo.limiteHistorial);
 
   ws = new ServicioWebSocket({
     urlPara: (id) => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.ws(id)}`,
@@ -240,7 +249,7 @@ $('btn-cerrar-info').addEventListener('click', () => $('dlg-info').close());
 
 // Detiene los movimientos al presionar Escape cuando no hay diálogos abiertos.
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
+  if (e.key === 'Escape' && store.get('vista') === 'control' && !document.querySelector('dialog[open]')) {
     comandos.detener();
   }
 });
@@ -292,6 +301,44 @@ ws.emisor.on('evento', (ev) => {
 
 // Intenta restablecer la conexión WebSocket cuando vuelve la conexión a Internet.
 window.addEventListener('online', () => ws.reconectarYa());
+
+// ---------- Monitoreo y navegación ----------
+
+// Reutiliza el WSS único: el servicio solo agrega un suscriptor a los eventos existentes.
+const monitoreo = new ServicioMonitoreo({
+  api: monitoreoApi,
+  apiVehiculo: api,
+  ws,
+  store,
+  config: CONFIG.monitoreo,
+});
+
+iniciarVistaMonitoreo({ servicio: monitoreo, principal: store, limite: CONFIG.monitoreo.limiteHistorial });
+iniciarIndicadoresMonitoreo(store, { ws: 'mon-chip-ws', api: 'mon-chip-api', rds: 'mon-chip-rds' });
+monitoreo.iniciar();
+
+iniciarNavegacion({
+  store,
+  transicion: crearTransicion($('transicion')),
+  vistas: { control: $('vista-control'), monitoreo: $('vista-monitoreo') },
+  enlaces: { control: $('nav-control'), monitoreo: $('nav-monitoreo') },
+  alSalir: {
+    // Al dejar CONTROL nada debe seguir mandando comandos: se apagan voz, gestos y giroscopio y se sueltan los joysticks.
+    control: () => {
+      if (store.get('modo') === 'gesto') gestos.desactivar('Cambiaste de sección: modo gestos desactivado.', 'warn');
+      if (store.get('modo') === 'voz') voz.desactivar('Cambiaste de sección: modo voz desactivado.', 'warn');
+      if (store.get('modo') === 'giro') giro.desactivar('Cambiaste de sección: modo giroscopio desactivado.', 'warn');
+      for (const j of Object.values(joysticks)) j.deshabilitar(true);
+    },
+    monitoreo: () => monitoreo.salir(),
+  },
+  alEntrar: {
+    control: () => {
+      for (const j of Object.values(joysticks)) j.deshabilitar(store.get('modo') !== 'manual');
+    },
+    monitoreo: () => monitoreo.entrar(),
+  },
+});
 
 // ---------- Carga del vehículo ----------
 
