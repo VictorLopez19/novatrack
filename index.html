@@ -131,9 +131,9 @@
                     <div class="voz-cab">
                         <span class="voz-badge"><i id="voz-icono" class="bi bi-mic-fill voz-mic" aria-hidden="true"></i>
                             Modo voz</span>
+                        <div class="voz-onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
                         <span id="voz-estado" class="voz-estado">Escuchando…</span>
                     </div>
-                    <div class="voz-onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
                     <div class="voz-chat">
                         <p id="voz-texto" class="voz-burbuja voz-yo" hidden></p>
                         <p id="voz-resultado" class="voz-burbuja voz-resp" hidden></p>
@@ -142,8 +142,11 @@
                         <div id="voz-ia-barra" class="voz-ia-barra"><i id="voz-ia-prog"></i></div>
                         <small id="voz-ia-paso"></small>
                     </div>
-                    <p class="voz-pista">Prueba: avanza · alto · baila</p>
-                    <button id="btn-voz-salir" class="btn-d" type="button">Salir del modo voz</button>
+                    <div class="modo-pie">
+                        <p class="voz-pista">Prueba: avanza · alto · baila</p>
+                        <button id="btn-voz-salir" class="btn-d btn-modo" type="button"><i class="bi bi-mic-mute-fill"
+                                aria-hidden="true"></i> Salir</button>
+                    </div>
                 </div>
 
 
@@ -153,27 +156,18 @@
                             Modo gestos</span>
                         <span id="gesto-estado" class="voz-estado">Cargando…</span>
                     </div>
-                    <div class="gesto-vista">
-                        <video id="gesto-video" playsinline muted autoplay></video>
-                        <canvas id="gesto-lienzo"></canvas>
+                    <!-- Cámara con los avisos superpuestos (el marco no se voltea, solo la imagen). -->
+                    <div class="gesto-marco">
+                        <div class="gesto-vista">
+                            <video id="gesto-video" playsinline muted autoplay></video>
+                            <canvas id="gesto-lienzo"></canvas>
+                        </div>
+                        <p id="gesto-chip" class="gesto-chip" data-tono="neutro"><i class="bi bi-hourglass-split"
+                                aria-hidden="true"></i> <span>Sin orden</span></p>
+                        <p id="gesto-aviso" class="gesto-aviso"></p>
                     </div>
-                    <p id="gesto-chip" class="gesto-chip" data-tono="neutro"><i class="bi bi-hourglass-split"
-                            aria-hidden="true"></i> <span>Sin orden</span></p>
-                    <p id="gesto-aviso" class="gesto-aviso"></p>
-                    <details class="gesto-guia">
-                        <summary>Guía de gestos</summary>
-                        <ul>
-                            <li>☝ Índice apuntando: avanzar, retroceder, izquierda, derecha</li>
-                            <li>✊ Puño arriba, abajo o a un lado: brazo arriba o abajo, abrir o cerrar garra</li>
-                            <li>✊ Puño en el centro o ✋ palma abierta: detener</li>
-                            <li>🤘 Cuernitos: encendido</li>
-                            <li>✌ V: velocidad</li>
-                            <li>3 dedos (índice, medio y anular): sonido</li>
-                            <li>👌 OK: luces</li>
-                        </ul>
-                    </details>
-                    <button id="btn-gesto-salir" class="btn-d" type="button"><i class="bi bi-camera-video-off-fill"
-                            aria-hidden="true"></i> Salir del modo gestos</button>
+                    <button id="btn-gesto-salir" class="btn-d btn-modo btn-modo-ancho" type="button"><i
+                            class="bi bi-camera-video-off-fill" aria-hidden="true"></i> Salir del modo gestos</button>
                 </div>
 
 
@@ -183,21 +177,32 @@
                             Giroscopio</span>
                         <span id="giro-estado" class="voz-estado">Calibrando…</span>
                     </div>
-                    <div class="giro-nivel" aria-hidden="true">
-                        <span class="giro-zona umb"></span>
-                        <span class="giro-zona lib"></span>
-                        <span id="giro-punto" class="giro-punto"></span>
+                    <div class="modo-cuerpo">
+                        <div class="giro-nivel" aria-hidden="true">
+                            <span class="giro-zona umb"></span>
+                            <span class="giro-zona lib"></span>
+                            <span id="giro-punto" class="giro-punto"></span>
+                        </div>
+                        <div class="modo-info">
+                            <span class="giro-et">Orden</span>
+                            <p id="giro-chip" class="gesto-chip" data-tono="neutro"><i class="bi bi-hourglass-split"
+                                    aria-hidden="true"></i> <span>Sin orden</span></p>
+                            <p id="giro-aviso" class="gesto-aviso"></p>
+                            <div id="giro-prog" class="giro-prog" hidden><i id="giro-prog-barra"></i></div>
+                        </div>
                     </div>
-                    <div id="giro-prog" class="giro-prog" hidden><i id="giro-prog-barra"></i></div>
-                    <p id="giro-chip" class="gesto-chip" data-tono="neutro"><i class="bi bi-hourglass-split"
-                            aria-hidden="true"></i> <span>Sin orden</span></p>
-                    <p id="giro-aviso" class="gesto-aviso"></p>
-                    <p id="giro-datos" class="giro-datos"></p>
+                    <dl id="giro-datos" class="giro-datos">
+                        <div><dt>Adelante / atrás</dt><dd id="giro-adelante">—</dd></div>
+                        <div><dt>Izq. / der.</dt><dd id="giro-lateral">—</dd></div>
+                        <div><dt>Aceleración</dt><dd id="giro-acel">—</dd></div>
+                    </dl>
                     <div class="giro-botones">
-                        <button id="btn-giro-calibrar" class="btn-d" type="button">Recalibrar</button>
-                        <button id="btn-giro-reactivar" class="btn-d btn-d-peligro" type="button"
+                        <button id="btn-giro-calibrar" class="btn-d btn-modo" type="button"><i class="bi bi-bullseye"
+                                aria-hidden="true"></i> Recalibrar</button>
+                        <button id="btn-giro-reactivar" class="btn-d btn-d-peligro btn-modo" type="button"
                             hidden>Reactivar</button>
-                        <button id="btn-giro-salir" class="btn-d" type="button">Salir</button>
+                        <button id="btn-giro-salir" class="btn-d btn-modo" type="button"><i class="bi bi-x-lg"
+                                aria-hidden="true"></i> Salir</button>
                     </div>
                 </div>
 

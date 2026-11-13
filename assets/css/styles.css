@@ -404,24 +404,7 @@ html.mantener-vertical .aviso-giro { display: none; }
   .pie { padding: .15rem 1rem; font-size: .7rem; position: sticky; bottom: 0; z-index: 5; background: #03112c;}
   .barra::after { display: none; }
 
-  .panel-voz { padding: .3rem .6rem; gap: .2rem; }
-  .voz-onda, .voz-pista, .voz-ia-nota { display: none; }
   .voz-burbuja { padding: .2rem .55rem; font-size: .75rem; }
-
-
-  .panel-gestos { padding: .3rem .6rem; gap: .2rem; }
-  .gesto-vista { max-width: 110px; }
-  .modo-gesto .voz-pista { display: none; }
-
-
-  .gesto-guia { width: 100%; font-size: .78rem; color: var(--muted); }
-  .gesto-guia summary { cursor: pointer; text-align: center; }
-  .gesto-guia ul { margin: .3rem 0 0; padding-left: 1.1rem; text-align: left; }
-
-
-  .panel-giro { padding: .3rem .6rem; gap: .2rem; }
-  .giro-nivel { width: 80px; }
-  .giro-datos { display: none; }
 }
 
 @media (max-height: 520px) {
@@ -566,6 +549,78 @@ html.mantener-vertical .aviso-giro { display: none; }
 .giro-botones { display: flex; flex-wrap: wrap; gap: .4rem; width: 100%; }
 .giro-botones [hidden] { display: none; }
 .giro-botones .btn-d { flex: 1 1 90px; min-height: 36px; padding: 0 .6rem; font-size: .85rem; }
+
+
+/* Modos especiales (voz, gestos y giroscopio): diseño compacto para que los paneles
+   ocupen poco alto en CONTROL.
+   ========================================================================== */
+.panel-voz, .panel-gestos, .panel-giro { max-width: 380px; gap: .45rem; padding: .55rem .75rem; }
+
+/* Voz: la onda va dentro de la cabecera, entre el modo y el estado */
+.voz-cab .voz-onda { flex: 1; min-width: 0; }
+
+/* Cuerpo en dos columnas */
+.modo-cuerpo { display: flex; align-items: center; gap: .75rem; width: 100%; }
+.modo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
+.modo-info .gesto-aviso { min-height: 0; text-align: left; }
+.modo-info .gesto-chip { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Gestos: cámara grande con la orden (arriba) y el aviso (abajo) superpuestos */
+.gesto-marco { position: relative; width: min(78%, 55dvh); overflow: hidden; border-radius: 12px; }
+.gesto-marco .gesto-vista { width: 100%; max-width: none; }
+.gesto-marco .gesto-chip {
+  position: absolute; top: .45rem; left: .45rem; max-width: calc(100% - .9rem);
+  background: rgba(2, 10, 28, .72); backdrop-filter: blur(4px); box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+}
+.gesto-marco .gesto-aviso {
+  position: absolute; left: 0; right: 0; bottom: 0; min-height: 0; padding: 1.1rem .7rem .45rem;
+  color: #fff; background: linear-gradient(transparent, rgba(2, 10, 28, .85)); text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+}
+.gesto-marco .gesto-aviso:empty { display: none; }
+
+/* Giroscopio: nivel | orden y aviso, luego las lecturas en tres casillas y los botones */
+.panel-giro .giro-nivel { flex: 0 0 auto; width: clamp(80px, 18dvh, 120px); }
+.giro-et { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--azul-cl); }
+.panel-giro .modo-info .gesto-chip { font-size: .95rem; padding: .3rem .9rem; }
+.panel-giro .giro-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; width: 100%; margin: 0; text-align: center; }
+.panel-giro .giro-datos > div { padding: .3rem .4rem; border: 1px solid rgba(185, 160, 255, .25); border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.panel-giro .giro-datos dt { font-size: .6rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.panel-giro .giro-datos dd { margin: 0; font-size: .9rem; font-weight: 700; color: var(--texto); }
+
+/* Pie y botones compactos */
+.modo-pie { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; }
+.modo-pie .voz-pista { flex: 1; min-width: 0; }
+.panel-voz .btn-modo, .panel-gestos .btn-modo, .panel-giro .btn-modo {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+  min-height: 34px; padding: 0 .9rem; font-size: .82rem;
+}
+.panel-gestos .btn-modo-ancho { width: 100%; }
+.panel-giro .giro-botones .btn-modo { flex: 1 1 0; }
+.btn-modo:hover { background: rgba(185, 160, 255, .15); }
+
+/* Con poca altura, el icono de estado del vehículo cede su espacio al panel del modo */
+@media (max-height: 760px) {
+  .modo-voz .icono-veh, .modo-gesto .icono-veh, .modo-giro .icono-veh,
+  .modo-voz .vehiculo-texto, .modo-gesto .vehiculo-texto, .modo-giro .vehiculo-texto { display: none; }
+}
+
+/* Celular en horizontal: paneles todavía más compactos */
+@media (max-height: 520px) and (orientation: landscape) {
+  .panel-voz, .panel-gestos, .panel-giro { padding: .3rem .6rem; gap: .25rem; }
+  .voz-pista, .panel-giro .giro-datos { display: none; }
+  .modo-pie { justify-content: flex-end; }
+  .voz-cab .voz-badge { padding: .1rem .5rem; font-size: .66rem; }
+  .modo-info { gap: .2rem; }
+  .modo-info .gesto-chip, .panel-giro .modo-info .gesto-chip, .gesto-marco .gesto-chip { padding: .15rem .65rem; font-size: .78rem; }
+  .modo-info .gesto-aviso, .gesto-marco .gesto-aviso { font-size: .72rem; }
+  .panel-voz .btn-modo, .panel-gestos .btn-modo, .panel-giro .btn-modo { min-height: 30px; font-size: .78rem; }
+}
+
+/* Celular en vertical (si se elige «Mantener en vertical»): los joysticks se ajustan a la altura disponible */
+@media (orientation: portrait) and (max-width: 719px) {
+  :root { --joy: clamp(100px, min(40vw, 26dvh), 250px); }
+  .tablero { padding: .6rem .75rem; gap: .6rem .5rem; }
+}
 
 
 /* 10. NAVEGACIÓN Y MONITOREO

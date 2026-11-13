@@ -1,5 +1,7 @@
 // Panel del modo voz: estado de la escucha, conversación (lo que se oyó y la respuesta)
 // y avance de las órdenes de IA. Todo el texto se escribe con textContent.
+import { formatoMovimiento } from '../core/utilidades.js';
+
 const ESTADOS = {
   escuchando: ['bi-mic-fill', 'Escuchando…'],
   procesando: ['bi-hourglass-split', 'Enviando a la IA…'],
@@ -36,8 +38,9 @@ export function iniciarPanelVoz({ panel, servicio, store }) {
     texto.hidden = false; texto.classList.remove('parcial'); texto.textContent = `«${t}»`;
     resultado.hidden = false;
     resultado.dataset.tipo = ok ? 'ok' : 'warn';
-    resultado.textContent = clave ? `Directo → ${clave}`
-      : (via === 'ia' ? `IA · ${aviso}` : (aviso || 'No entendí el comando.'));
+    // Directo: «Orden interpretada: Avanzar». IA: texto fijo (el mensaje del backend no se muestra).
+    resultado.textContent = clave ? `Orden interpretada: ${formatoMovimiento(clave)}`
+      : (via === 'ia' ? 'Orden Interpretada por IA' : (aviso || 'No entendí el comando.'));
   });
 
   store.on('demo', (d) => {
@@ -53,7 +56,7 @@ export function iniciarPanelVoz({ panel, servicio, store }) {
         estado.textContent = 'Ejecutando orden de IA';
         barra.classList.remove('indeterminada');
         prog.style.width = `${Math.min(100, Math.round((d.orden / d.total) * 100))}%`;
-        paso.textContent = `Paso ${d.orden}/${d.total}${d.comando ? ` · ${d.comando}` : ''}`;
+        paso.textContent = `Paso ${d.orden}/${d.total}${d.comando ? ` · ${formatoMovimiento(d.comando)}` : ''}`;
       }
     } else if (iaActiva) {
       iaActiva = false;

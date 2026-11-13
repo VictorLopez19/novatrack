@@ -1,6 +1,7 @@
 // Vista MONITOREO: pinta la tarjeta del último movimiento, la tabla de 10 filas y los avisos.
 // Todo con textContent/createElement (sin innerHTML con datos remotos). La tabla se actualiza por diferencias.
 import { formatearFecha, textoZona } from '../dominio/fechas.js';
+import { formatoMovimiento } from '../core/utilidades.js';
 
 const ORIGEN = {
   rest: ['bi-database-check', 'Estado guardado · REST', 'azul'],
@@ -8,12 +9,6 @@ const ORIGEN = {
   demo: ['bi-collection-play-fill', 'Paso de DEMO · no va al historial', 'naranja'],
   ia: ['bi-robot', 'Orden de IA · no va al historial', 'morado'],
 };
-
-// Nombre legible de un movimiento: sin «_» y solo la primera letra en mayúscula (GIRAR_GARRA → Girar garra).
-export function formatoMovimiento(texto) {
-  const t = String(texto).replaceAll('_', ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('es');
-  return t.charAt(0).toLocaleUpperCase('es') + t.slice(1);
-}
 
 const ACTIVIDAD = {
   demo_inicio: 'iniciada',

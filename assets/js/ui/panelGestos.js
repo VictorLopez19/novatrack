@@ -27,6 +27,14 @@ export function iniciarPanelGestos({ panel, servicio }) {
   lienzo.width = 160; lienzo.height = 120;
   let armado = false;
 
+  // Estado del modo: mientras se descargan el detector de manos y se abre la cámara se muestra «Cargando…».
+  const ESTADOS = { cargando: 'Cargando cámara…', activo: 'Activo', inactivo: 'Inactivo' };
+  servicio.emisor.on('estado', (e) => {
+    estado.textContent = ESTADOS[e] ?? '';
+    panel.dataset.estado = e;
+    if (e !== 'activo') { aviso.textContent = ''; pintarChip(SIN_ORDEN, 'neutro'); }
+  });
+
   const pintarChip = ([icono, texto], tono) => {
     chipIcono.className = `bi ${icono}`; chipTexto.textContent = texto;
     chip.dataset.tono = tono;

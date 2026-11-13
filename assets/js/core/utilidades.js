@@ -65,3 +65,9 @@ export function crearStore(inicial) {
         on: (k, fn) => em.on(k, fn),
     };
 }
+
+// Nombre legible de un movimiento: sin «_» y solo la primera letra en mayúscula (GIRAR_GARRA → Girar garra).
+export function formatoMovimiento(texto) {
+    const t = String(texto).replaceAll('_', ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('es');
+    return t.charAt(0).toLocaleUpperCase('es') + t.slice(1);
+}
