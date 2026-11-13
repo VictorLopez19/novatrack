@@ -13,10 +13,12 @@ export class Botonera {
   #gestosOk;
   #alGiro;
   #giroOk;
+  #alVr;
+  #vrOk;
   #btns = new Map();
 
   // Inicializa la botonera, registra eventos y actualiza su estado.
-  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk, alGiro, giroOk }) {
+  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk, alGiro, giroOk, alVr, vrOk = () => false }) {
     this.#cont = contenedor;
     this.#cfg = botones;
     this.#servicio = servicio;
@@ -28,6 +30,8 @@ export class Botonera {
     this.#gestosOk = gestosOk;
     this.#alGiro = alGiro;
     this.#giroOk = giroOk;
+    this.#alVr = alVr;
+    this.#vrOk = vrOk; // función: el soporte de WebXR se conoce después de cargar
 
     this.#render();
 
@@ -92,6 +96,8 @@ export class Botonera {
           this.#alGestos();
         } else if (b.tipo === 'giro') {
           this.#alGiro();
+        } else if (b.tipo === 'vr') {
+          this.#alVr();
         }
 
       });
@@ -125,6 +131,11 @@ export class Botonera {
 
         if (!this.#giroOk)
           motivo = 'Tu dispositivo no tiene giroscopio';
+      } else if (b.tipo === 'vr') {
+        ok = hayVeh && libre && this.#vrOk();
+
+        if (!this.#vrOk())
+          motivo = 'Tu dispositivo no permite realidad mixta (WebXR)';
       } else if (b.tipo === 'demo') {
         ok = hayVeh;
       } else if (!this.#servicio.puedeEnviar(b.clave)) {

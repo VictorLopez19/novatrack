@@ -48,7 +48,7 @@ export class ServicioComandos {
 
     const modo = this.#store.get('modo');
     if (modo !== 'manual' && !String(duenio).includes(modo)) {
-      const nombre = { voz: 'voz', gesto: 'gestos', giro: 'giroscopio' }[modo] ?? modo;
+      const nombre = { voz: 'voz', gesto: 'gestos', giro: 'giroscopio', vr: 'VR' }[modo] ?? modo;
       this.#msg(`Modo ${nombre} activo: los demás controles están deshabilitados.`, 'warn'); return false;
     }
 

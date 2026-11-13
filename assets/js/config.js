@@ -113,6 +113,7 @@ export const CONFIG = Object.freeze({
     { fila: 1, tipo: 'voz', etiqueta: 'Voz', icono: 'bi-mic-fill', tono: 'morado' },
     { fila: 1, tipo: 'gesto', etiqueta: 'Gestos', icono: 'bi-hand-index-thumb-fill', tono: 'morado' },
     { fila: 1, tipo: 'giro', etiqueta: 'Giroscopio', icono: 'bi-phone-fill', tono: 'morado' },
+    { fila: 1, tipo: 'vr', etiqueta: 'VR', icono: 'bi-badge-vr-fill', tono: 'morado' },
 
     // Botones asociados a comandos disponibles en el catálogo.
     { fila: 2, tipo: 'comando', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', tono: 'azul' },
@@ -184,5 +185,19 @@ export const CONFIG = Object.freeze({
     invertirAdelante: false, // pon true si adelante/atrás sale al revés
     invertirLateral: false,  // pon true si izquierda/derecha sale al revés
     rangoVisual: 30,        // grados que recorre el punto del indicador
+  }),
+
+  // Modo VR (realidad mixta con WebXR): control virtual flotante, el usuario sigue viendo el mundo real.
+  vr: Object.freeze({
+    threeUrl: 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js',
+    origen: 'WEB_VR',
+    distancia: 0.45,        // m frente a la cabeza al entrar (visor)
+    bajada: 0.22,           // m por debajo de los ojos (queda a la altura del pecho)
+    distanciaCelular: 0.6,  // en celular (AR en pantalla) se coloca más lejos
+    bajadaCelular: 0.08,
+    profundidad: 0.006,     // m que hay que hundir un botón para presionarlo
+    pinzaCierra: 0.02,      // m entre pulgar e índice para tomar el asa
+    pinzaAbre: 0.035,       // m para soltarla (histéresis)
+    suavizado: 0.5,         // 0 a 1: qué tan rápido sigue el control a la mano al moverlo
   }),
 });

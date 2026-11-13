@@ -551,6 +551,12 @@ html.mantener-vertical .aviso-giro { display: none; }
 .giro-botones .btn-d { flex: 1 1 90px; min-height: 36px; padding: 0 .6rem; font-size: .85rem; }
 
 
+/* Modo VR: el control se dibuja en el visor; el lienzo de la página no se muestra */
+.lienzo-vr { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.modo-vr .botonera { display: none; }
+.modo-vr .joystick { opacity: .3; filter: grayscale(.6); pointer-events: none; }
+.modo-vr .modo-etiqueta { color: var(--morado); }
+
 /* Modos especiales (voz, gestos y giroscopio): diseño compacto para que los paneles
    ocupen poco alto en CONTROL.
    ========================================================================== */

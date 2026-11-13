@@ -25,6 +25,7 @@ import { ServicioGestos, gestosSoportados } from './servicios/servicioGestos.js'
 import { iniciarPanelGestos } from './ui/panelGestos.js';
 import { ServicioGiroscopio, giroscopioSoportado } from './servicios/servicioGiroscopio.js';
 import { iniciarPanelGiro } from './ui/panelGiro.js';
+import { ServicioVR } from './servicios/servicioVR.js';
 import { crearTransicion } from './ui/transicion.js';
 import { MonitoreoApi } from './api/monitoreoApi.js';
 import { ServicioMonitoreo } from './servicios/servicioMonitoreo.js';
@@ -141,6 +142,10 @@ const giro = new ServicioGiroscopio({
   store, comandos, config: CONFIG.giroscopio
 });
 
+const vr = new ServicioVR({
+  store, comandos, emisor: emisorBotones, config: CONFIG.vr
+});
+
 // ---------- Joysticks ----------
 
 // Crea los joysticks definidos en la configuración.
@@ -184,11 +189,12 @@ const marcarJoysticks = () => {
   }
 };
 
-const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos', giro: 'Giroscopio' };
+const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos', giro: 'Giroscopio', vr: 'VR' };
 store.on('modo', (m) => {
   document.documentElement.classList.toggle('modo-voz', m === 'voz');
   document.documentElement.classList.toggle('modo-gesto', m === 'gesto');
   document.documentElement.classList.toggle('modo-giro', m === 'giro');
+  document.documentElement.classList.toggle('modo-vr', m === 'vr');
   $('modo-etiqueta').textContent = ETIQUETA_MODO[m] ?? 'Manual';
   for (const j of Object.values(joysticks)) j.deshabilitar(m !== 'manual');
 });
@@ -218,7 +224,12 @@ const botonera = new Botonera($('botonera'), {
   gestosOk: gestosSoportados,
   alGiro: () => giro.activar(), 
   giroOk: giroscopioSoportado,
+  alVr: () => vr.activar(),
+  vrOk: () => vr.soportado,
 });
+
+// El soporte de realidad mixta se conoce de forma asíncrona: al saberlo se actualiza el botón VR.
+vr.comprobar().then(() => botonera.actualizar());
 
 // Configura el diálogo de ajustes y las acciones para guardar o limpiar la selección.
 const ajustes = new Ajustes({
@@ -328,6 +339,7 @@ iniciarNavegacion({
       if (store.get('modo') === 'gesto') gestos.desactivar('Cambiaste de sección: modo gestos desactivado.', 'warn');
       if (store.get('modo') === 'voz') voz.desactivar('Cambiaste de sección: modo voz desactivado.', 'warn');
       if (store.get('modo') === 'giro') giro.desactivar('Cambiaste de sección: modo giroscopio desactivado.', 'warn');
+      if (store.get('modo') === 'vr') vr.desactivar();
       for (const j of Object.values(joysticks)) j.deshabilitar(true);
     },
     monitoreo: () => monitoreo.salir(),
