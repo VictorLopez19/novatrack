@@ -195,9 +195,11 @@ export const CONFIG = Object.freeze({
     bajada: 0.22,           // m por debajo de los ojos (queda a la altura del pecho)
     distanciaCelular: 0.6,  // en celular (AR en pantalla) se coloca más lejos
     bajadaCelular: 0.08,
-    profundidad: 0.006,     // m que hay que hundir un botón para presionarlo
+    profundidad: 0.004,     // m que hay que hundir un botón (medido desde la piel del dedo) para presionarlo
     pinzaCierra: 0.02,      // m entre pulgar e índice para tomar el asa
     pinzaAbre: 0.035,       // m para soltarla (histéresis)
     suavizado: 0.5,         // 0 a 1: qué tan rápido sigue el control a la mano al moverlo
+    depurar: true,          // registra en la consola cada pulsación ([VR] …) para diagnosticar
+    mostrarManos: true,     // dibuja el esqueleto de las manos (en el Quest se ven las reales; útil en el emulador)
   }),
 });

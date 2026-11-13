@@ -8,6 +8,7 @@ import { BOTONES, CUERPO, ASA, DetectorPulsacion, DetectorPinza, cercaDelAsa } f
 import { crearModeloControl } from '../ui/modeloControlVR.js';
 
 const COLOR_WS = { en_linea: '#3ee58a', conectando: '#ffbf3c', desconectado: '#ff6b7a' };
+const TEXTO_WS = { en_linea: 'En línea', conectando: 'Conectando', desconectado: 'Sin conexión' };
 
 export class ServicioVR {
   emisor = crearEmisor(); // 'estado' (activo | inactivo)
@@ -18,7 +19,7 @@ export class ServicioVR {
   #manos = []; #mandos = []; #fuentes = [null, null];
   #detector = null; #pinzas = []; #pinzaPrevia = [false, false]; #medio = [null, null];
   #agarre = null; #rayoPulsado = [null, null]; #colocado = false;
-  #movActual = null; #mensaje = ''; #tDisponible = 0;
+  #movActual = null; #mensaje = ''; #tDisponible = 0; #aviso = ''; #avisoHasta = 0;
 
   constructor({ store, comandos, emisor, config }) {
     this.#store = store; this.#comandos = comandos; this.#cfg = config;
@@ -78,6 +79,7 @@ export class ServicioVR {
 
     const modelo = await crearModeloControl(T);
     escena.add(modelo.grupo, ...modelo.cursores);
+    if (this.#cfg.mostrarManos) escena.add(...modelo.manos);
 
     for (const i of [0, 1]) {
       const mano = renderer.xr.getHand(i);
@@ -88,6 +90,7 @@ export class ServicioVR {
 
       mando.addEventListener('connected', (e) => {
         this.#fuentes[i] = e.data;
+        this.#depurar('entrada', i, e.data.hand ? 'mano' : e.data.targetRayMode, e.data.handedness);
         modelo.rayos[i].visible = !e.data.hand && e.data.targetRayMode === 'tracked-pointer';
       });
       mando.addEventListener('disconnected', () => {
@@ -132,6 +135,9 @@ export class ServicioVR {
 
       this.#renderer.xr.setReferenceSpaceType('local');
       await this.#renderer.xr.setSession(sesion);
+      // En el Quest la imagen va directo al visor; un emulador (Immersive Web Emulator) la muestra en este
+      // lienzo, así que mientras dure la sesión se hace visible a pantalla completa.
+      this.#renderer.domElement.classList.add('activo');
 
       this.#colocado = false;
       this.#agarre = null;
@@ -159,6 +165,8 @@ export class ServicioVR {
   #alTerminar = () => {
     if (!this.#activo) return;
     this.#renderer?.setAnimationLoop(null);
+    this.#renderer?.domElement.classList.remove('activo');
+    for (const i of [0, 1]) this.#modelo?.dibujarMano(i, null);
     this.#soltarTodo();
     this.#sesion = null;
     this.#activo = false;
@@ -181,25 +189,36 @@ export class ServicioVR {
     const f = i === null ? null : this.#fuentes[i];
     f?.gamepad?.hapticActuators?.[0]?.pulse?.(0.6, 25);
 
+    this.#modelo.pulso(b.id, performance.now());
     if (b.tipo === 'salir') { this.desactivar(); return; }
     if (b.tipo === 'detener') { this.#movActual = null; this.#comandos.detener(); return; }
     if (!this.#comandos.puedeEnviar(b.clave)) {
       this.#modelo.marcar(b.id, 'error', performance.now());
-      this.#msg(`«${b.etiqueta}» no existe en el catálogo del vehículo.`, 'warn');
+      this.#depurar('pulsar', b.id, 'no existe en el catálogo');
+      this.#avisar(`${b.etiqueta}: no existe en el catálogo`);
       return;
     }
 
+    let enviado;
     if (b.tipo === 'mov') { // se mantiene mientras el dedo siga presionando
-      if (this.#comandos.enviar(b.clave, 'vr', this.#cfg.origen)) this.#movActual = b.id;
-      return;
+      enviado = this.#comandos.enviar(b.clave, 'vr', this.#cfg.origen);
+      if (enviado) this.#movActual = b.id;
+    } else { // funciones de un solo toque: primero se frena lo que se movía
+      this.#comandos.soltar('vr');
+      this.#movActual = null;
+      enviado = this.#comandos.enviar(b.clave, 'btn:vr', this.#cfg.origen);
     }
-    // Funciones de un solo toque: primero se frena lo que se movía
-    this.#comandos.soltar('vr');
-    this.#movActual = null;
-    this.#comandos.enviar(b.clave, 'btn:vr', this.#cfg.origen);
+    this.#depurar('pulsar', b.id, enviado ? 'enviado' : `rechazado: ${this.#mensaje}`);
+    if (!enviado) this.#avisar(this.#mensaje || 'No se pudo enviar el comando.');
   }
 
+  /** Muestra un aviso en la pantalla del control durante unos segundos (si no, lo tapa el nombre del botón). */
+  #avisar(texto) { this.#aviso = texto; this.#avisoHasta = performance.now() + 2500; }
+
+  #depurar(...datos) { if (this.#cfg.depurar) console.debug('[VR]', ...datos); }
+
   #soltarBoton(b) {
+    this.#depurar('soltar', b.id);
     if (b.tipo === 'mov' && this.#movActual === b.id) {
       this.#movActual = null;
       this.#comandos.soltar('vr');
@@ -223,7 +242,7 @@ export class ServicioVR {
 
     if (inicio) {
       const hit = this.#rayoDesde(i);
-      if (!hit) return;
+      if (!hit) { this.#depurar('rayo sin objetivo', i); return; }
       if (hit.object === this.#modelo.asa) { this.#agarre = { tipo: 'rayo', i, distancia: hit.distance }; return; }
       const b = hit.object.userData.boton;
       if (b) { this.#rayoPulsado[i] = b; this.#pulsar(b, i); }
@@ -290,6 +309,7 @@ export class ServicioVR {
         const f = this.#fuentes[i];
         const indice = f?.hand ? this.#manos[i].joints?.['index-finger-tip'] : null;
         const pulgar = f?.hand ? this.#manos[i].joints?.['thumb-tip'] : null;
+        if (this.#cfg.mostrarManos) m.dibujarMano(i, f?.hand ? this.#manos[i].joints : null);
 
         if (!indice?.visible) {
           m.cursores[i].visible = false;
@@ -317,7 +337,16 @@ export class ServicioVR {
         if (!cerrada && this.#agarre?.tipo === 'mano' && this.#agarre.i === i) this.#agarre = null;
         this.#pinzaPrevia[i] = cerrada;
 
-        if (this.#agarre?.i !== i) puntasMundo.push({ id: `mano${i}`, p: indice.position });
+        // WebXR entrega el CENTRO de la yema: se resta su radio para pulsar al tocar con la piel, no al hundir el dedo.
+        if (this.#agarre?.i !== i) puntasMundo.push({ id: `mano${i}`, p: indice.position, radio: indice.jointRadius ?? 0.008 });
+      }
+
+      // Mandos: la punta del mando también presiona los botones al tocarlos (además del rayo + gatillo)
+      for (const i of [0, 1]) {
+        const f = this.#fuentes[i];
+        if (!f || f.hand || f.targetRayMode !== 'tracked-pointer' || !this.#mandos[i].visible) continue;
+        if (this.#agarre?.i === i) continue;
+        puntasMundo.push({ id: `mando${i}`, p: this.#mandos[i].getWorldPosition(new this.#T.Vector3()), radio: 0.006 });
       }
 
       // 2) Rayos de los mandos: foco y largo del rayo
@@ -348,10 +377,10 @@ export class ServicioVR {
       m.resaltarAsa(resaltarAsa);
 
       // 4) Pulsaciones con el dedo (coordenadas locales, z medida desde la cara)
-      const puntas = puntasMundo.map(({ id, p: pm }) => {
+      const puntas = puntasMundo.map(({ id, p: pm, radio }) => {
         tmpB.copy(pm);
         grupo.worldToLocal(tmpB);
-        return { id, x: tmpB.x, y: tmpB.y, z: tmpB.z - CUERPO.grosor / 2 };
+        return { id, x: tmpB.x, y: tmpB.y, z: tmpB.z - CUERPO.grosor / 2 - radio };
       });
       const res = this.#detector.actualizar(puntas);
       for (const b of res.soltar) this.#soltarBoton(b);
@@ -365,11 +394,21 @@ export class ServicioVR {
       // 5) Pantalla: lo que se apunta, lo que se mueve o el último mensaje
       const enFoco = BOTONES.find((b) => foco.has(b.id));
       const moviendo = BOTONES.find((b) => b.id === this.#movActual);
+      const hayAviso = t < this.#avisoHasta;
       m.escribirPantalla({
-        linea: this.#agarre ? 'Moviendo el control…' : (enFoco?.etiqueta ?? moviendo?.etiqueta ?? (this.#mensaje || 'Listo')),
-        tono: moviendo && !enFoco ? '#ffbf3c' : '#eaf2ff',
+        linea: hayAviso ? this.#aviso
+          : this.#agarre ? 'Moviendo el control…' : (enFoco?.etiqueta ?? moviendo?.etiqueta ?? (this.#mensaje || 'Listo')),
+        tono: hayAviso ? '#ff6b7a' : moviendo && !enFoco ? '#ffbf3c' : '#eaf2ff',
+        icono: hayAviso ? 'bi-exclamation-triangle-fill' : this.#agarre ? 'bi-arrows-move' : (enFoco ?? moviendo)?.icono ?? null,
+        conexion: TEXTO_WS[this.#store.get('ws')] ?? '',
         punto: COLOR_WS[this.#store.get('ws')] ?? '#ffbf3c',
       });
+
+      // Franja de luz: naranja parpadeando si se mueve, azul al mover el control, si no el color de la conexión
+      const ws = { en_linea: 0x3ee58a, conectando: 0xffbf3c }[this.#store.get('ws')] ?? 0xff6b7a;
+      if (moviendo) m.estadoLuz(0xffb020, true);
+      else if (this.#agarre) m.estadoLuz(0x2f8bff, true);
+      else m.estadoLuz(ws, false);
 
       // 6) Disponibilidad de cada botón según el catálogo (no hace falta cada cuadro)
       if (t - this.#tDisponible > 500) {

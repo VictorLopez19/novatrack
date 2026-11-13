@@ -553,6 +553,8 @@ html.mantener-vertical .aviso-giro { display: none; }
 
 /* Modo VR: el control se dibuja en el visor; el lienzo de la página no se muestra */
 .lienzo-vr { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+/* Durante la sesión: visible a pantalla completa (los emuladores de WebXR dibujan aquí; en el Quest no se ve la página) */
+.lienzo-vr.activo { width: 100vw !important; height: 100dvh !important; opacity: 1; z-index: 5000; }
 .modo-vr .botonera { display: none; }
 .modo-vr .joystick { opacity: .3; filter: grayscale(.6); pointer-events: none; }
 .modo-vr .modo-etiqueta { color: var(--morado); }
