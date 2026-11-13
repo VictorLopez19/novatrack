@@ -58,7 +58,7 @@ export function iniciarPanelGestos({ panel, servicio }) {
 
     // Unir cada punto con su articulación correspondiente
     ctx.strokeStyle = tono;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 1.6; // grosor de las líneas entre articulaciones
     ctx.lineCap = 'round';
 
     for (const [a, b] of conexiones) {
@@ -74,14 +74,14 @@ export function iniciarPanelGestos({ panel, servicio }) {
       ctx.arc(
         p.x * lienzo.width,
         p.y * lienzo.height,
-        3,
+        2.2, // radio de cada articulación
         0,
         Math.PI * 2
       );
       ctx.fillStyle = '#ffffff';
       ctx.fill();
       ctx.strokeStyle = tono;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
   });
