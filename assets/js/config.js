@@ -195,7 +195,7 @@ export const CONFIG = Object.freeze({
     profundidad: 0.004,     // m que hay que hundir un botón (medido desde la piel del dedo) para presionarlo
     pinzaCierra: 0.02,      // m entre pulgar e índice para tomar una palanca
     pinzaAbre: 0.035,       // m para soltarla (histéresis)
-    alturaOjos: 1.2,        // m de los ojos al piso si el visor no da el piso real (persona sentada)
+    alturaOjos: 1.2,        // m de los ojos al piso de la cabina: siempre se siente sentado, aunque estés de pie
     pluma: true,            // muestra la pluma, el brazo y la cuchara por el parabrisas (se animan con los comandos)
     mostrarManos: true,     // dibuja el esqueleto de las manos (en el Quest se ven las reales; útil en el emulador)
     depurar: true,          // registra en la consola cada acción ([VR] …) para diagnosticar

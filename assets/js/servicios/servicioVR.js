@@ -161,7 +161,7 @@ export class ServicioVR {
         if (sesion.visibilityState !== 'visible') this.#soltarTodo(); // menú del sistema u otra app encima
       });
 
-      // Con «local-floor» se conoce la altura real de los ojos y la cabina queda apoyada en el piso real.
+      // «local-floor» si el visor lo da (solo para el seguimiento; la cabina siempre se arma desde los ojos).
       this.#conPiso = Boolean(sesion.enabledFeatures?.includes('local-floor'));
       this.#renderer.xr.setReferenceSpaceType(this.#conPiso ? 'local-floor' : 'local');
       await this.#renderer.xr.setSession(sesion);
@@ -347,7 +347,9 @@ export class ServicioVR {
     for (const lado of LADOS) this.#soltarPalanca(lado);
     this.#quitarCabina();
     const T = this.#T;
-    const altura = this.#conPiso ? Math.min(1.9, Math.max(0.9, cabeza.y)) : this.#cfg.alturaOjos;
+    // Siempre con postura de sentado: la cabina se arma desde los ojos (no desde el piso real), así que de pie
+    // o sentado el asiento, las palancas y el tablero quedan donde estarían al manejar la máquina.
+    const altura = this.#cfg.alturaOjos;
     const cabina = crearCabina(T, { altura, pluma: this.#cfg.pluma });
 
     const adelante = new T.Vector3(0, 0, -1).applyQuaternion(orientacion);
@@ -360,7 +362,7 @@ export class ServicioVR {
 
     this.#escena.add(cabina.grupo);
     this.#cabina = cabina;
-    this.#depurar('cabina', `altura de los ojos ${altura.toFixed(2)} m`, this.#conPiso ? '(piso real)' : '(supuesta, sentado)');
+    this.#depurar('cabina', `ojos a ${altura.toFixed(2)} m del piso de la cabina (sentado)`, `cabeza real a ${cabeza.y.toFixed(2)} m`);
   }
 
   #quitarCabina() {

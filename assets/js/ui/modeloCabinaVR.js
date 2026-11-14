@@ -231,7 +231,7 @@ export function crearCabina(THREE, { altura = 1.2, pluma: conPluma = true } = {}
   cilindro(0.02, 0.03, 0.05, goma, X - 0.1, PISO + 0.42, ATRAS - 0.1);
 
   // ---------- Tablero (repisa con patas a los lados: las piernas pasan por debajo) ----------
-  const fondoTab = 0.4;
+  const fondoTab = 0.51;
   const zTab = FRENTE + 0.02 + fondoTab / 2;
   caja(ANCHO - 0.16, 0.1, fondoTab, panel, 0, TABLERO - 0.05, zTab);
   for (const sx of [-1, 1]) caja(0.1, TABLERO - 0.1 - PISO, 0.3, panel, sx * (X - 0.1), (PISO + TABLERO - 0.1) / 2, FRENTE + 0.17);
@@ -246,7 +246,7 @@ export function crearCabina(THREE, { altura = 1.2, pluma: conPluma = true } = {}
 
   // Soporte inclinado donde se monta el panel de botones (mirando al usuario)
   const anclaPanel = new THREE.Group();
-  anclaPanel.position.set(0, TABLERO + 0.065, -0.53);
+  anclaPanel.position.set(0, TABLERO + 0.065, -0.41);
   anclaPanel.rotation.x = -0.87;
   grupo.add(anclaPanel);
   caja(0.46, 0.19, 0.05, grafito, 0, 0, -0.035, anclaPanel); // carcasa detrás del panel
