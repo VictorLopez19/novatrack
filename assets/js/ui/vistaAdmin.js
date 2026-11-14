@@ -178,7 +178,7 @@ export function iniciarVistaAdmin({ servicio, principal, pinPropio }) {
         if (s.pin === pinPropio()) cab.append(el('span', 'adm-tu', 'Esta pestaña'));
 
         const chip = el('span', `chip ${s.autorizada ? 'chip-ok' : 'chip-warn'} adm-chip`);
-        chip.append(icono(s.autorizada ? 'bi-shield-check' : 'bi-shield-lock-fill'), el('span', '', s.autorizada ? 'Con permiso' : 'Pendiente'));
+        chip.append(el('span', '', s.autorizada ? 'Con permiso' : 'Pendiente'));
         cab.append(chip);
 
         // Datos
@@ -215,14 +215,14 @@ export function iniciarVistaAdmin({ servicio, principal, pinPropio }) {
         permiso.dataset.accion = 'permiso';
         permiso.dataset.pin = s.pin;
         permiso.dataset.autorizar = String(!s.autorizada);
-        permiso.append(icono(s.autorizada ? 'bi-slash-circle' : 'bi-check-circle-fill'), el('span', '', s.autorizada ? 'Revocar' : 'Autorizar'));
+        permiso.append(el('span', '', s.autorizada ? 'Revocar' : 'Autorizar'));
         permiso.setAttribute('aria-label', `${s.autorizada ? 'Revocar permiso de' : 'Autorizar'} la sesión ${s.pin}`);
 
         const cerrar = el('button', 'btn-d btn-d-peligro adm-btn');
         cerrar.type = 'button';
         cerrar.dataset.accion = 'cerrar';
         cerrar.dataset.pin = s.pin;
-        cerrar.append(icono('bi-x-octagon-fill'), el('span', '', 'Cerrar sesión'));
+        cerrar.append(el('span', '', 'Cerrar sesión'));
         cerrar.setAttribute('aria-label', `Cerrar la sesión ${s.pin}`);
 
         // Conserva el estado «¿Confirmar?» si la lista se repinta mientras se espera la segunda pulsación.
