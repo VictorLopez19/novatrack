@@ -58,6 +58,29 @@ export const CONFIG = Object.freeze({
 
     ia: (id) => `/vehiculos/${id}/ia/ejecutar`,
     iaCampo: 'instruccion', // nombre del campo de IAEntrada: confírmalo en /docs
+
+    // SESIONES: una por cada carga de la página (PIN de 5 dígitos que autoriza el administrador).
+    sesiones: '/sesiones',
+    sesionCerrar: (token) => `/sesiones/${encodeURIComponent(token)}/cerrar`, // navigator.sendBeacon al salir
+    wsSesion: (token) => `/ws/sesiones/${encodeURIComponent(token)}`,
+
+    // ADMINISTRACIÓN (Authorization: Bearer). Las credenciales solo se validan en el servidor.
+    adminLogin: '/admin/login',
+    adminLogout: '/admin/logout',
+    adminSesiones: '/admin/sesiones',
+    adminPermiso: (pin) => `/admin/sesiones/${pin}/permiso`,
+    adminPermisoTodas: '/admin/sesiones/permiso',
+    adminCerrar: (pin) => `/admin/sesiones/${pin}/cerrar`,
+    adminConfiguracion: '/admin/configuracion',
+    adminDetener: (id) => `/admin/vehiculos/${id}/detener`,
+    wsAdmin: '/ws/admin',
+  }),
+
+  // Sesión de control y panel de administración.
+  sesion: Object.freeze({
+    recargaMs: 1800,          // espera antes de recargar cuando el administrador cierra la sesión
+    reintentoMaxMs: 30000,    // tope del reintento al crear la sesión si la API no responde
+    claveAdmin: 'novatrack.admin', // sessionStorage: el login del admin dura lo que la pestaña
   }),
 
   // Clave lógica -> nombres posibles en el catálogo (se normaliza: sin acentos, MAYÚSCULAS, "_").

@@ -36,13 +36,13 @@ const MENSAJES = {
  * respuestas JSON y tratamiento de errores.
  */
 export class ClienteHttp {
-    #base; #timeoutMs; #obtenerClave; #alRespuesta;
+    #base; #timeoutMs; #obtenerClave; #obtenerSesion; #alRespuesta;
 
     /**
      * Inicializa el cliente HTTP con la configuración del servidor,
      * el tiempo de espera y las funciones auxiliares.
      */
-    constructor({ baseUrl, timeoutMs, obtenerClave = () => '', alRespuesta = () => { } }) {
+    constructor({ baseUrl, timeoutMs, obtenerClave = () => '', obtenerSesion = () => '', alRespuesta = () => { } }) {
         const base = String(baseUrl).replace(/\/+$/, '');
 
         // Evita conexiones HTTP inseguras cuando la aplicación utiliza HTTPS.
@@ -53,14 +53,20 @@ export class ClienteHttp {
         this.#base = base;
         this.#timeoutMs = timeoutMs;
         this.#obtenerClave = obtenerClave;
+        this.#obtenerSesion = obtenerSesion;
         this.#alRespuesta = alRespuesta;
+    }
+
+    /** URL absoluta de una ruta de la API (para navigator.sendBeacon). */
+    url(ruta) {
+        return `${this.#base}${ruta}`;
     }
 
     /**
      * Ejecuta una solicitud HTTP y procesa la respuesta del servidor.
      * Admite parámetros, autenticación, cancelación y tiempo de espera.
      */
-    async solicitar(metodo, ruta, { cuerpo, query, timeoutMs, senal, protegido = false } = {}) {
+    async solicitar(metodo, ruta, { cuerpo, query, timeoutMs, senal, protegido = false, autorizacion = '' } = {}) {
         // Construye la URL y agrega los parámetros de consulta cuando existen.
         let url = `${this.#base}${ruta}`;
         if (query) url += `?${new URLSearchParams(query)}`;
@@ -73,7 +79,14 @@ export class ClienteHttp {
         if (protegido) {
             const clave = this.#obtenerClave();
             if (clave) headers['X-API-Key'] = clave;
+
+            // Sesión de control: el backend solo acepta movimientos de sesiones autorizadas por el administrador.
+            const sesion = this.#obtenerSesion();
+            if (sesion) headers['X-Sesion-Token'] = sesion;
         }
+
+        // Token del administrador.
+        if (autorizacion) headers.Authorization = `Bearer ${autorizacion}`;
 
         // Configura la cancelación de la solicitud y el tiempo máximo de espera.
         const ctl = new AbortController();
@@ -127,7 +140,10 @@ export class ClienteHttp {
                 const d = json?.detalle ?? json?.detail;
                 const detalle = typeof d === 'string' ? d.slice(0, 160) : '';
                 const generico = MENSAJES[resp.status] ?? `Error HTTP ${resp.status}.`;
-                const usarDetalle = detalle && resp.status !== 401 && resp.status !== 403;
+                // En 401/403 el detalle solo se muestra si se refiere a la sesión o al administrador
+                // (los de la API Key se sustituyen por un mensaje genérico).
+                const deSesion = /sesi[oó]n|administrador|contrase/i.test(detalle);
+                const usarDetalle = detalle && ((resp.status !== 401 && resp.status !== 403) || deSesion);
 
                 throw new ErrorApi('http', usarDetalle ? detalle : generico, {
                     status: resp.status,
@@ -154,4 +170,8 @@ export class ClienteHttp {
     // Métodos abreviados para realizar solicitudes GET y POST.
     get = (ruta, op) => this.solicitar('GET', ruta, op);
     post = (ruta, op) => this.solicitar('POST', ruta, { ...op, protegido: true });
+
+    // Solicitudes del administrador (Authorization: Bearer <token>).
+    getAdmin = (ruta, token, op) => this.solicitar('GET', ruta, { ...op, autorizacion: token });
+    postAdmin = (ruta, token, op) => this.solicitar('POST', ruta, { ...op, autorizacion: token });
 }

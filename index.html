@@ -64,16 +64,20 @@
                 <span class="conexion-val">
                     <span id="ws-punto" class="punto punto-err" aria-hidden="true"></span>
                     <strong id="ws-texto">Desconectado</strong>
+                    <span id="cab-pin" class="cab-pin" data-nivel="warn">PIN …</span>
                 </span>
             </div>
 
-            <!-- Navega entre las secciones CONTROL y MONITOREO. -->
+            <!-- Navega entre las secciones CONTROL, MONITOREO y ADMINISTRACIÓN. -->
             <nav class="vistas" aria-label="Secciones">
                 <a id="nav-control" class="vista-enlace" href="#/control" aria-current="page">
                     <i class="bi bi-joystick" aria-hidden="true"></i><span>Control</span>
                 </a>
                 <a id="nav-monitoreo" class="vista-enlace" href="#/monitoreo">
                     <i class="bi bi-activity" aria-hidden="true"></i><span>Monitoreo</span>
+                </a>
+                <a id="nav-admin" class="vista-enlace" href="#/admin">
+                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i><span>Admin</span>
                 </a>
             </nav>
 
@@ -124,6 +128,16 @@
                 <p id="vehiculo-estado-texto" class="vehiculo-texto">
                     Vehículo físico sin confirmar
                 </p>
+
+                <!-- Aviso visible mientras el administrador no autorice esta sesión. -->
+                <div id="aviso-permiso" class="aviso-permiso" role="status" aria-live="polite" data-nivel="warn">
+                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+                    <div class="aviso-permiso-txt">
+                        <strong id="aviso-permiso-titulo">Creando sesión…</strong>
+                        <span id="aviso-permiso-texto">Generando el PIN de esta sesión.</span>
+                    </div>
+                    <span class="aviso-permiso-pin" aria-label="PIN de la sesión"><small>PIN</small><b id="aviso-permiso-pin">·····</b></span>
+                </div>
 
                 <div id="botonera" class="botonera"></div>
 
@@ -337,6 +351,118 @@
             </p>
         </main>
 
+        <!-- Vista ADMINISTRACIÓN: login del administrador y gestión de permisos de las sesiones. -->
+        <main id="vista-admin" class="admin" tabindex="-1" aria-labelledby="t-admin" hidden>
+            <h1 id="t-admin" class="visually-hidden">Administración</h1>
+
+            <!-- Inicio de sesión (las credenciales solo se validan en el servidor). -->
+            <section id="admin-login" class="adm-login" aria-labelledby="t-adm-login">
+                <div class="adm-login-ico" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></div>
+                <h2 id="t-adm-login">Administración</h2>
+                <p class="adm-login-intro">Inicia sesión para autorizar, revocar o cerrar las sesiones de control.</p>
+
+                <form id="adm-form" class="adm-form" novalidate>
+                    <label class="form-label" for="adm-usuario">Usuario</label>
+                    <input id="adm-usuario" class="form-control" name="usuario" autocomplete="username"
+                        autocapitalize="none" spellcheck="false" maxlength="60" required>
+
+                    <label class="form-label" for="adm-clave">Contraseña</label>
+                    <div class="adm-clave">
+                        <input id="adm-clave" class="form-control" name="contrasena" type="password"
+                            autocomplete="current-password" maxlength="128" required>
+                        <button id="adm-ver" class="adm-ver" type="button" aria-label="Mostrar contraseña">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <p id="adm-error" class="adm-error" role="alert" hidden></p>
+
+                    <button id="adm-entrar" class="btn-d btn-d-primario adm-entrar" type="submit">
+                        <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Entrar
+                    </button>
+                </form>
+            </section>
+
+            <!-- Panel del administrador. -->
+            <div id="admin-panel" class="adm-panel" hidden>
+                <header class="adm-cab">
+                    <div class="adm-titulo">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                        <div>
+                            <strong>Panel de administración</strong>
+                            <small id="adm-usuario-et"></small>
+                        </div>
+                    </div>
+                    <span id="adm-chip-ws" class="chip"><i aria-hidden="true"></i><span></span></span>
+                    <button id="adm-salir" class="btn-d btn-mon" type="button">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión
+                    </button>
+                </header>
+
+                <!-- Resumen -->
+                <ul class="adm-resumen" aria-label="Resumen de sesiones">
+                    <li><i class="bi bi-people-fill" aria-hidden="true"></i><strong id="adm-n-total">0</strong><span>Sesiones</span></li>
+                    <li data-tono="azul"><i class="bi bi-broadcast" aria-hidden="true"></i><strong id="adm-n-conectadas">0</strong><span>En línea</span></li>
+                    <li data-tono="verde"><i class="bi bi-shield-check" aria-hidden="true"></i><strong id="adm-n-autorizadas">0</strong><span>Con permiso</span></li>
+                    <li data-tono="amarillo"><i class="bi bi-hourglass-split" aria-hidden="true"></i><strong id="adm-n-pendientes">0</strong><span>Pendientes</span></li>
+                </ul>
+
+                <!-- Acciones generales -->
+                <section class="mon-panel adm-acciones" aria-labelledby="t-adm-acciones">
+                    <h2 id="t-adm-acciones" class="mon-titulo">
+                        <i class="bi bi-sliders" aria-hidden="true"></i> Acciones generales
+                    </h2>
+
+                    <label class="adm-switch">
+                        <input id="adm-auto" type="checkbox" role="switch">
+                        <span class="adm-switch-pista" aria-hidden="true"></span>
+                        <span>Autorizar automáticamente las sesiones nuevas</span>
+                    </label>
+
+                    <div class="adm-botones">
+                        <button id="adm-todas-si" class="btn-d btn-mon" type="button">
+                            <i class="bi bi-check2-all" aria-hidden="true"></i> <span>Autorizar todas</span>
+                        </button>
+                        <button id="adm-todas-no" class="btn-d btn-mon" type="button">
+                            <i class="bi bi-slash-circle" aria-hidden="true"></i> <span>Revocar todas</span>
+                        </button>
+                        <button id="adm-detener" class="btn-d btn-mon adm-peligro" type="button">
+                            <i class="bi bi-stop-circle-fill" aria-hidden="true"></i> <span>Detener vehículo</span>
+                        </button>
+                    </div>
+
+                    <p id="adm-aviso" class="mon-aviso" role="status" hidden></p>
+                </section>
+
+                <!-- Sesiones -->
+                <section class="mon-panel adm-sesiones" aria-labelledby="t-adm-sesiones">
+                    <div class="mon-panel-cab">
+                        <h2 id="t-adm-sesiones" class="mon-titulo">
+                            <i class="bi bi-person-badge-fill" aria-hidden="true"></i> Sesiones activas
+                        </h2>
+                        <div class="adm-filtros">
+                            <input id="adm-buscar" class="form-control adm-buscar" inputmode="numeric" maxlength="5"
+                                placeholder="Buscar PIN" aria-label="Buscar sesión por PIN" autocomplete="off">
+                            <select id="adm-filtro" class="form-select adm-select" aria-label="Filtrar sesiones">
+                                <option value="todas">Todas</option>
+                                <option value="pendientes">Pendientes</option>
+                                <option value="autorizadas">Con permiso</option>
+                            </select>
+                        </div>
+                    </div>
+                    <ul id="adm-lista" class="adm-lista" aria-live="polite"></ul>
+                </section>
+
+                <!-- Bitácora -->
+                <section class="mon-panel adm-bitacora" aria-labelledby="t-adm-bitacora">
+                    <h2 id="t-adm-bitacora" class="mon-titulo">
+                        <i class="bi bi-journal-text" aria-hidden="true"></i> Bitácora
+                    </h2>
+                    <ol id="adm-bitacora" class="adm-log"></ol>
+                </section>
+            </div>
+        </main>
+
         <!-- Muestra los créditos de la aplicación. -->
         <footer class="pie">
             <span id="pie-creditos"></span>
@@ -454,6 +580,21 @@
             <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
             <strong>Estado de conectividad</strong>
         </h2>
+
+        <!-- Sesión de control de esta página: PIN de 5 dígitos y permiso del administrador. -->
+        <div class="sesion-caja" aria-labelledby="t-sesion">
+            <div class="sesion-pin-bloque">
+                <span id="t-sesion" class="evento-et">PIN de esta sesión</span>
+                <strong id="info-pin" class="sesion-pin">·····</strong>
+            </div>
+            <div class="sesion-estado">
+                <span id="chip-sesion" class="chip">
+                    <i aria-hidden="true"></i>
+                    <span></span>
+                </span>
+                <small id="info-sesion-nota" class="sesion-nota"></small>
+            </div>
+        </div>
 
         <ul class="estados">
 

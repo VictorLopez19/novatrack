@@ -7,6 +7,7 @@ export class ServicioWebSocket {
 
   #urlPara;
   #t;
+  #alAbrir;
   #id = null;
   #ws = null;
   #manual = true;
@@ -17,9 +18,11 @@ export class ServicioWebSocket {
   #tPong = null;
 
   // Inicializa la URL, los tiempos y valida el uso de WSS en HTTPS.
-  constructor({ urlPara, tiempos }) {
+  // `alAbrir(ws)` (opcional) se ejecuta al abrir cada conexión; p. ej. para enviar un token de acceso.
+  constructor({ urlPara, tiempos, alAbrir = null }) {
     this.#urlPara = urlPara;
     this.#t = tiempos;
+    this.#alAbrir = alAbrir;
 
     if (
       location.protocol === 'https:' &&
@@ -96,6 +99,12 @@ export class ServicioWebSocket {
 
     // Se ejecuta cuando la conexión se establece correctamente.
     ws.onopen = () => {
+      try {
+        this.#alAbrir?.(ws);
+      } catch {
+        /* el servidor cerrará la conexión si falta el mensaje inicial */
+      }
+
       this.#intento = 0;
       this.#estado('en_linea');
       this.#iniciarLatido();

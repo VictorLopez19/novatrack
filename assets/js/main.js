@@ -32,6 +32,12 @@ import { ServicioMonitoreo } from './servicios/servicioMonitoreo.js';
 import { iniciarVistaMonitoreo } from './ui/vistaMonitoreo.js';
 import { iniciarIndicadoresMonitoreo } from './ui/indicadoresMonitoreo.js';
 import { iniciarNavegacion } from './vistas/navegacion.js';
+import { SesionApi } from './api/sesionApi.js';
+import { AdminApi } from './api/adminApi.js';
+import { ServicioSesion, SIN_SESION } from './servicios/servicioSesion.js';
+import { ServicioAdmin } from './servicios/servicioAdmin.js';
+import { iniciarPanelSesion } from './ui/panelSesion.js';
+import { iniciarVistaAdmin } from './ui/vistaAdmin.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -54,6 +60,8 @@ const store = crearStore({
   datosListos: false,
   modo: 'manual',
   vista: 'control',
+  sesion: SIN_SESION,          // { estado, pin, autorizada } de la sesión de control de esta página
+  sesionWs: 'desconectado',
 });
 
 // Centraliza la publicación de mensajes en la interfaz.
@@ -85,6 +93,8 @@ let api;
 let monitoreoApi;
 let ws;
 let conectividad;
+let sesion;
+let admin;
 
 // Configura los clientes HTTP, la API del vehículo y el servicio WebSocket.
 try {
@@ -92,6 +102,7 @@ try {
     baseUrl: CONFIG.apiBaseUrl,
     timeoutMs: CONFIG.tiempos.httpMs,
     obtenerClave: () => CONFIG.apiKey,
+    obtenerSesion: () => sesion?.token ?? '',
     alRespuesta: (s, r) => conectividad?.alRespuestaHttp(s, r),
   });
 
@@ -101,6 +112,32 @@ try {
   ws = new ServicioWebSocket({
     urlPara: (id) => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.ws(id)}`,
     tiempos: CONFIG.tiempos,
+  });
+
+  // Sesión de control de esta página (PIN) y su WSS propio.
+  sesion = new ServicioSesion({
+    api: new SesionApi(http, CONFIG.endpoints),
+    store,
+    config: CONFIG.sesion,
+    crearWs: (token) => new ServicioWebSocket({
+      urlPara: () => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.wsSesion(token() ?? '')}`,
+      tiempos: CONFIG.tiempos,
+    }),
+  });
+
+  // Movimientos, DEMO e IA se rechazan localmente si la sesión no tiene permiso del administrador.
+  api.usarPermiso(() => sesion.motivoSinPermiso());
+
+  // Panel de administración: el token se envía como primer mensaje del WSS (no viaja en la URL).
+  admin = new ServicioAdmin({
+    api: new AdminApi(http, CONFIG.endpoints),
+    msg: (texto, tipo) => msg(texto, tipo),
+    claveAlmacen: CONFIG.sesion.claveAdmin,
+    crearWs: (alAbrir) => new ServicioWebSocket({
+      urlPara: () => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.wsAdmin}`,
+      tiempos: CONFIG.tiempos,
+      alAbrir,
+    }),
   });
 } catch (e) {
   msg(e.message, 'error');
@@ -189,6 +226,12 @@ const marcarJoysticks = () => {
   }
 };
 
+// Los joysticks solo responden en modo manual, en CONTROL y con una sesión autorizada.
+const actualizarJoysticks = () => {
+  const bloqueo = store.get('modo') !== 'manual' || store.get('vista') !== 'control' || !store.get('sesion').autorizada;
+  for (const j of Object.values(joysticks)) j.deshabilitar(bloqueo);
+};
+
 const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos', giro: 'Giroscopio', vr: 'VR' };
 store.on('modo', (m) => {
   document.documentElement.classList.toggle('modo-voz', m === 'voz');
@@ -196,8 +239,42 @@ store.on('modo', (m) => {
   document.documentElement.classList.toggle('modo-giro', m === 'giro');
   document.documentElement.classList.toggle('modo-vr', m === 'vr');
   $('modo-etiqueta').textContent = ETIQUETA_MODO[m] ?? 'Manual';
-  for (const j of Object.values(joysticks)) j.deshabilitar(m !== 'manual');
+  actualizarJoysticks();
 });
+
+// ---------- Sesión de control (PIN y permiso del administrador) ----------
+let teniaPermiso = false;
+
+store.on('sesion', (s) => {
+  document.documentElement.classList.toggle('sin-permiso', !s.autorizada);
+
+  // Al perder el permiso nada debe seguir enviando comandos (el servidor ya detiene el vehículo).
+  if (teniaPermiso && !s.autorizada) {
+    const m = store.get('modo');
+    if (m === 'gesto') gestos.desactivar('Sin permiso del administrador: modo gestos desactivado.', 'warn');
+    if (m === 'voz') voz.desactivar('Sin permiso del administrador: modo voz desactivado.', 'warn');
+    if (m === 'giro') giro.desactivar('Sin permiso del administrador: modo giroscopio desactivado.', 'warn');
+    if (m === 'vr') vr.desactivar();
+    comandos.reiniciar();
+    if ($('dlg-demo').open) $('dlg-demo').close();
+  }
+
+  teniaPermiso = s.autorizada;
+  actualizarJoysticks();
+});
+
+document.documentElement.classList.add('sin-permiso');
+iniciarPanelSesion(store, {
+  pin: 'info-pin',
+  chip: 'chip-sesion',
+  nota: 'info-sesion-nota',
+  aviso: 'aviso-permiso',
+  avisoPin: 'aviso-permiso-pin',
+  avisoTitulo: 'aviso-permiso-titulo',
+  avisoTexto: 'aviso-permiso-texto',
+  cabPin: 'cab-pin',
+});
+actualizarJoysticks();
 
 iniciarPanelVoz({ panel: $('panel-voz'), servicio: voz, store });
 iniciarPanelGestos({ panel: $('panel-gestos'), servicio: gestos });
@@ -328,11 +405,15 @@ iniciarVistaMonitoreo({ servicio: monitoreo, principal: store, limite: CONFIG.mo
 iniciarIndicadoresMonitoreo(store, { ws: 'mon-chip-ws', api: 'mon-chip-api', rds: 'mon-chip-rds' });
 monitoreo.iniciar();
 
+// Vista ADMINISTRACIÓN (el login del administrador se recuerda solo en esta pestaña).
+admin.restaurar();
+iniciarVistaAdmin({ servicio: admin, principal: store, pinPropio: () => sesion.pin });
+
 iniciarNavegacion({
   store,
   transicion: crearTransicion($('transicion')),
-  vistas: { control: $('vista-control'), monitoreo: $('vista-monitoreo') },
-  enlaces: { control: $('nav-control'), monitoreo: $('nav-monitoreo') },
+  vistas: { control: $('vista-control'), monitoreo: $('vista-monitoreo'), admin: $('vista-admin') },
+  enlaces: { control: $('nav-control'), monitoreo: $('nav-monitoreo'), admin: $('nav-admin') },
   alSalir: {
     // Al dejar CONTROL nada debe seguir mandando comandos: se apagan voz, gestos y giroscopio y se sueltan los joysticks.
     control: () => {
@@ -343,12 +424,12 @@ iniciarNavegacion({
       for (const j of Object.values(joysticks)) j.deshabilitar(true);
     },
     monitoreo: () => monitoreo.salir(),
+    admin: () => admin.salir(),
   },
   alEntrar: {
-    control: () => {
-      for (const j of Object.values(joysticks)) j.deshabilitar(store.get('modo') !== 'manual');
-    },
+    control: () => actualizarJoysticks(),
     monitoreo: () => monitoreo.entrar(),
+    admin: () => admin.entrar(),
   },
 });
 
@@ -505,6 +586,9 @@ function avisarSiNoResponde() {
 // Inicializa los servicios y carga el vehículo seleccionado.
 async function iniciar() {
   conectividad.iniciar();
+
+  // Cada carga de la página abre una sesión nueva con su PIN (sin permiso hasta que el admin la autorice).
+  sesion.iniciar();
 
   const id = preferencias.obtenerVehiculoId(CONFIG.vehiculoPorDefecto);
 

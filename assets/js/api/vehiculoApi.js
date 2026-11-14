@@ -12,12 +12,24 @@ const lista = (v, que) => {
 // Centraliza las operaciones de comunicación con la API del vehículo.
 export class VehiculoApi {
     #http; #ep; #tiempos;
+    #permiso = () => null; // devuelve un mensaje si la sesión no puede controlar el vehículo
 
     // Inicializa el cliente con las conexiones, endpoints y tiempos configurados.
     constructor(http, endpoints, tiempos) {
         this.#http = http;
         this.#ep = endpoints;
         this.#tiempos = tiempos;
+    }
+
+    /** Registra la comprobación de permiso de la sesión (se aplica a movimientos, DEMO e IA). */
+    usarPermiso(fn) {
+        this.#permiso = fn;
+    }
+
+    // Rechaza localmente las operaciones de control si la sesión no tiene permiso del administrador.
+    #exigirPermiso() {
+        const motivo = this.#permiso();
+        if (motivo) throw new ErrorApi('permiso', motivo, { status: 403 });
     }
 
     // Consulta el estado de disponibilidad de la API.
@@ -90,6 +102,7 @@ export class VehiculoApi {
 
     // Registra un movimiento y verifica la respuesta del servidor.
     async registrarMovimiento(idVehiculo, idComando, origen) {
+        this.#exigirPermiso();
         const r = await this.#http.post(this.#ep.movimiento(idVehiculo), {
             cuerpo: {
                 id_comando: idComando,
@@ -106,6 +119,7 @@ export class VehiculoApi {
 
     // Solicita el inicio de una demostración para el vehículo seleccionado.
     async iniciarDemo(idVehiculo, idDemo) {
+        this.#exigirPermiso();
         const r = await this.#http.post(this.#ep.iniciarDemo(idDemo), {
             query: {
                 id_vehiculo: idVehiculo
@@ -121,6 +135,7 @@ export class VehiculoApi {
 
     // Solicita la cancelación de la demostración en ejecución.
     async cancelarDemo(idVehiculo) {
+        this.#exigirPermiso();
         return this.#http.post(this.#ep.cancelarDemo, {
             query: {
                 id_vehiculo: idVehiculo
@@ -130,6 +145,7 @@ export class VehiculoApi {
 
     // Solicita la ejecución de movimientos por IA
     async ejecutarIA(idVehiculo, texto) {
+        this.#exigirPermiso();
         const campo = this.#ep.iaCampo || 'instruccion';
         const r = await this.#http.post(this.#ep.ia(idVehiculo), { cuerpo: { [campo]: texto }, timeoutMs: 20000 });
         if (!esObjeto(r)) throw new ErrorApi('formato', 'Respuesta de la IA inválida.');

@@ -1,9 +1,10 @@
-// Navegación CONTROL ⇄ MONITOREO dentro de la misma página (hash #/control · #/monitoreo).
-// Funciona en GitHub Pages sin servidor. El WSS y los servicios son únicos: aquí solo se alterna la vista.
-const RUTAS = { control: '#/control', monitoreo: '#/monitoreo' };
-const TEXTOS = { control: 'Abriendo control ...', monitoreo: 'Abriendo monitoreo ...' };
+// Navegación CONTROL ⇄ MONITOREO ⇄ ADMINISTRACIÓN dentro de la misma página
+// (hash #/control · #/monitoreo · #/admin). Funciona en GitHub Pages sin servidor.
+// El WSS y los servicios son únicos: aquí solo se alterna la vista.
+const RUTAS = { control: '#/control', monitoreo: '#/monitoreo', admin: '#/admin' };
+const TEXTOS = { control: 'Abriendo control ...', monitoreo: 'Abriendo monitoreo ...', admin: 'Abriendo administración ...' };
 
-const desdeHash = () => (location.hash === RUTAS.monitoreo ? 'monitoreo' : 'control');
+const desdeHash = () => Object.keys(RUTAS).find((v) => RUTAS[v] === location.hash) ?? 'control';
 
 export function iniciarNavegacion({ store, transicion, vistas, enlaces, alSalir = {}, alEntrar = {} }) {
   let actual = null;
@@ -18,7 +19,9 @@ export function iniciarNavegacion({ store, transicion, vistas, enlaces, alSalir 
       else a.removeAttribute('aria-current');
     }
 
-    document.documentElement.classList.toggle('vista-monitoreo', destino === 'monitoreo');
+    for (const nombre of Object.keys(RUTAS)) {
+      document.documentElement.classList.toggle(`vista-${nombre}`, nombre === destino);
+    }
     actual = destino;
     store.set('vista', destino);
     window.scrollTo(0, 0);

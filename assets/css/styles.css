@@ -806,3 +806,207 @@ html, .tabla-wrap, .mon-ultimo { scrollbar-width: thin; scrollbar-color: #2f8bff
 @media (prefers-reduced-motion: reduce) {
   .mon-card.actualizado, .fila-nueva, .chip-warn .bi-arrow-repeat { animation: none; }
 }
+
+
+/* 11. SESIÓN DE CONTROL (PIN y permiso)
+   ========================================================================== */
+html.vista-admin .aviso-giro { display: none !important; }
+
+/* PIN en el encabezado */
+.cab-pin {
+  margin-left: .35rem; padding: .05rem .5rem; border: 1px solid var(--warn); border-radius: 999px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cab-pin[data-nivel="ok"] { border-color: var(--ok); color: var(--ok); }
+.cab-pin[data-nivel="err"] { border-color: var(--err); color: var(--err); }
+
+/* Aviso en CONTROL mientras la sesión no tiene permiso */
+.aviso-permiso {
+  display: flex; align-items: center; gap: .65rem; width: 100%; padding: .5rem .75rem;
+  border: 1px solid var(--warn); border-radius: 14px; background: rgba(255, 191, 60, .1);
+  box-shadow: 0 0 14px rgba(255, 191, 60, .18);
+}
+.aviso-permiso[hidden] { display: none; }
+.aviso-permiso[data-nivel="err"] { border-color: var(--err); background: rgba(255, 107, 122, .1); box-shadow: none; }
+.aviso-permiso > .bi { font-size: 1.3rem; color: var(--warn); }
+.aviso-permiso[data-nivel="err"] > .bi { color: var(--err); }
+.aviso-permiso-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.aviso-permiso-txt strong { font-size: .85rem; }
+.aviso-permiso-txt span { font-size: .74rem; color: var(--muted); overflow-wrap: anywhere; }
+.aviso-permiso-pin { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.aviso-permiso-pin small { font-size: .6rem; letter-spacing: .1em; color: var(--muted); }
+.aviso-permiso-pin b { font-size: 1.35rem; letter-spacing: .12em; font-variant-numeric: tabular-nums; color: #fff; }
+
+/* Sin permiso: los controles se ven, pero no responden */
+html.sin-permiso .botonera, html.sin-permiso #joy-chasis, html.sin-permiso #joy-brazo, html.sin-permiso .btn-detener {
+  opacity: .35; filter: grayscale(.7); pointer-events: none;
+}
+
+/* Bloque de sesión en «Información» */
+.sesion-caja {
+  display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin: 0 0 1rem; padding: .8rem .9rem;
+  border: 1px solid rgba(47, 139, 255, .55); border-radius: 14px;
+  background: linear-gradient(160deg, rgba(31, 111, 224, .18), rgba(4, 18, 47, .75));
+}
+.sesion-pin-bloque { display: flex; flex-direction: column; }
+.sesion-pin-bloque .evento-et { margin: 0 0 .15rem; }
+.sesion-pin { font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: .2em; font-variant-numeric: tabular-nums; user-select: all; }
+.sesion-estado { flex: 1; min-width: 180px; display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; }
+.sesion-nota { font-size: .76rem; color: var(--muted); }
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .aviso-permiso { padding: .25rem .6rem; gap: .5rem; }
+  .aviso-permiso-txt span { display: none; }
+  .aviso-permiso-pin b { font-size: 1.05rem; }
+}
+@media (max-width: 400px) {
+  .cab-pin { display: none; } /* el PIN sigue visible en el aviso de CONTROL y en Información */
+}
+
+
+/* 12. VISTA ADMINISTRACIÓN
+   ========================================================================== */
+.admin { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 1rem .75rem; }
+.admin:focus { outline: none; }
+.admin .form-control, .admin .form-select {
+  min-height: 44px; background-color: #04122f; color: var(--texto); border-color: var(--azul); border-radius: 12px;
+}
+.admin .form-control::placeholder { color: rgba(169, 189, 219, .6); }
+.admin .form-label { margin: .6rem 0 .2rem; font-size: .85rem; color: var(--muted); }
+
+/* Inicio de sesión */
+.adm-login {
+  width: min(420px, 100%); margin: 1.5rem auto; padding: 1.6rem 1.4rem; text-align: center;
+  border: 2px solid var(--azul); border-radius: 20px; background: linear-gradient(160deg, #0a2150, #030c24);
+  box-shadow: 0 0 34px rgba(47, 139, 255, .45);
+}
+.adm-login[hidden] { display: none; }
+.adm-login-ico {
+  width: 64px; height: 64px; margin: 0 auto .6rem; display: grid; place-items: center; border-radius: 50%;
+  border: 2px solid var(--azul); color: var(--azul-cl); font-size: 1.8rem; box-shadow: 0 0 18px rgba(47, 139, 255, .5);
+}
+.adm-login h2 { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.adm-login-intro { margin: .35rem 0 .6rem; font-size: .86rem; color: var(--muted); }
+.adm-form { text-align: left; }
+.adm-clave { position: relative; }
+.adm-clave .form-control { padding-right: 3rem; }
+.adm-ver {
+  position: absolute; top: 0; right: 0; width: 46px; height: 44px; display: grid; place-items: center;
+  border: 0; background: none; color: var(--azul-cl); border-radius: 0 12px 12px 0;
+}
+.adm-error { margin: .7rem 0 0; padding: .45rem .7rem; border: 1px solid var(--err); border-radius: 10px; background: rgba(255, 107, 122, .1); font-size: .82rem; color: #ffc2c8; }
+.adm-entrar { width: 100%; margin-top: 1rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
+
+/* Panel */
+.adm-panel { display: grid; gap: .9rem; }
+.adm-panel[hidden] { display: none; }
+.adm-panel[aria-busy="true"] .adm-btn, .adm-panel[aria-busy="true"] .adm-botones .btn-d { cursor: progress; }
+.adm-cab { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.adm-titulo { flex: 1; min-width: 200px; display: flex; align-items: center; gap: .6rem; }
+.adm-titulo > .bi { font-size: 1.6rem; color: var(--ok); }
+.adm-titulo div { display: flex; flex-direction: column; line-height: 1.2; }
+.adm-titulo small { font-size: .78rem; color: var(--muted); }
+
+/* Resumen */
+.adm-resumen { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
+.adm-resumen li {
+  --tono: var(--azul-cl); display: grid; grid-template-columns: auto 1fr; grid-template-areas: "i n" "i t"; column-gap: .6rem; align-items: center;
+  padding: .65rem .8rem; border: 1px solid rgba(47, 139, 255, .35); border-left: 4px solid var(--tono); border-radius: 14px; background: rgba(4, 18, 47, .75);
+}
+.adm-resumen li[data-tono="azul"] { --tono: var(--azul); }
+.adm-resumen li[data-tono="verde"] { --tono: var(--ok); }
+.adm-resumen li[data-tono="amarillo"] { --tono: var(--warn); }
+.adm-resumen .bi { grid-area: i; font-size: 1.35rem; color: var(--tono); }
+.adm-resumen strong { grid-area: n; font-size: 1.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.adm-resumen span { grid-area: t; font-size: .74rem; color: var(--muted); }
+
+/* Acciones generales */
+.adm-switch { position: relative; display: flex; align-items: center; gap: .7rem; cursor: pointer; font-size: .9rem; }
+.adm-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.adm-switch-pista {
+  position: relative; flex: 0 0 auto; width: 48px; height: 28px; border-radius: 999px;
+  border: 1px solid var(--muted); background: rgba(4, 18, 47, .9); transition: background .2s, border-color .2s;
+}
+.adm-switch-pista::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--muted); transition: transform .2s, background .2s;
+}
+.adm-switch input:checked + .adm-switch-pista { border-color: var(--ok); background: rgba(62, 229, 138, .2); }
+.adm-switch input:checked + .adm-switch-pista::after { transform: translateX(20px); background: var(--ok); }
+.adm-switch input:focus-visible + .adm-switch-pista { outline: 3px solid #ffd54a; outline-offset: 3px; }
+.adm-botones { display: flex; flex-wrap: wrap; gap: .5rem; }
+.adm-botones .btn-mon { flex: 1 1 160px; justify-content: center; }
+.adm-peligro { border-color: var(--err); color: #fff; background: var(--rojo); box-shadow: 0 0 14px rgba(200, 16, 46, .45); }
+.adm-peligro:hover { background: #e01535 !important; }
+.btn-d.confirmar { border-color: var(--warn); background: rgba(255, 191, 60, .2); color: #fff; animation: pulso .8s infinite; }
+
+/* Filtros */
+.adm-filtros { display: flex; gap: .5rem; flex-wrap: wrap; }
+.adm-buscar { width: 9.5rem; font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+.adm-select { width: auto; min-width: 9rem; }
+
+/* Lista de sesiones */
+.adm-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.adm-sesion {
+  display: flex; flex-direction: column; gap: .65rem; padding: .85rem .9rem;
+  border: 1px solid var(--warn); border-left-width: 5px; border-radius: 16px; background: rgba(4, 18, 47, .8);
+}
+.adm-sesion[data-autorizada="true"] { border-color: var(--ok); box-shadow: 0 0 14px rgba(62, 229, 138, .15); }
+.adm-sesion[data-conectada="false"] { opacity: .75; border-style: dashed; }
+.adm-s-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.adm-pin { font-size: 1.6rem; font-weight: 800; line-height: 1; letter-spacing: .14em; font-variant-numeric: tabular-nums; }
+.adm-tu { padding: .1rem .55rem; border: 1px solid var(--azul-cl); border-radius: 999px; font-size: .68rem; font-weight: 700; color: var(--azul-cl); }
+.adm-chip { margin-left: auto; padding: .2rem .65rem; font-size: .78rem; }
+.adm-s-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .8rem; margin: 0; }
+.adm-s-datos > div { min-width: 0; }
+.adm-s-datos dt { font-size: .64rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--azul-cl); }
+.adm-s-datos dd { margin: 0; font-size: .85rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.adm-conexion { display: flex; align-items: center; gap: .4rem; }
+.adm-conexion .punto { flex: 0 0 auto; }
+.adm-s-acciones { display: flex; gap: .5rem; }
+.adm-btn { flex: 1 1 0; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; font-size: .86rem; }
+.adm-autorizar { background: #1d9a5c; border-color: var(--ok); font-weight: 700; color: #fff; }
+.adm-autorizar:hover { background: #22b46b; }
+.adm-revocar { border-color: var(--warn); color: #ffe2a3; }
+.adm-revocar:hover { background: rgba(255, 191, 60, .12); }
+.adm-vacio {
+  display: flex; align-items: center; justify-content: center; gap: .5rem; padding: 1.4rem; grid-column: 1 / -1;
+  text-align: center; font-size: .88rem; color: var(--muted); border: 1px dashed rgba(140, 192, 255, .3); border-radius: 14px;
+}
+
+/* Bitácora */
+.adm-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2f8bff rgba(3, 17, 44, .9); }
+.adm-log-item { --tono: #7e93b4; display: flex; align-items: baseline; gap: .55rem; padding: .4rem .2rem .4rem .7rem; border-left: 3px solid var(--tono); font-size: .83rem; }
+.adm-log-item + .adm-log-item { border-top: 1px solid rgba(140, 192, 255, .1); }
+.adm-log-item[data-tono="azul"] { --tono: var(--azul); }
+.adm-log-item[data-tono="verde"] { --tono: var(--ok); }
+.adm-log-item[data-tono="amarillo"] { --tono: var(--warn); }
+.adm-log-item[data-tono="rojo"] { --tono: var(--err); }
+.adm-log-item[data-tono="morado"] { --tono: var(--morado); }
+.adm-log-pin { padding: 0 .45rem; border: 1px solid var(--tono); border-radius: 999px; font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm-log-txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* Pantalla amplia: bitácora fija a la derecha */
+@media (min-width: 900px) {
+  .adm-panel { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "cab cab" "res res" "acc log" "ses log"; align-items: start; }
+  .adm-cab { grid-area: cab; }
+  .adm-resumen { grid-area: res; }
+  .adm-acciones { grid-area: acc; }
+  .adm-sesiones { grid-area: ses; }
+  .adm-bitacora { grid-area: log; position: sticky; top: .75rem; }
+  .adm-log { max-height: calc(100dvh - 12rem); }
+}
+@media (max-width: 599px) {
+  .adm-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adm-filtros { width: 100%; }
+  .adm-buscar, .adm-select { flex: 1 1 0; width: auto; min-width: 0; }
+  .adm-cab .btn-mon { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .admin { padding: .5rem .6rem; }
+  .adm-login { margin: .5rem auto; padding: 1rem; }
+  .adm-login-ico { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-d.confirmar { animation: none; }
+}
