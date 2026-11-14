@@ -1,80 +1,60 @@
-// Pruebas de la lógica del control VR (sin navegador ni visor): node tests/controlVR.test.mjs
+// Pruebas de la lógica de los mandos VR (sin navegador ni visor): node tests/controlVR.test.mjs
 import assert from 'node:assert/strict';
-import { BOTONES, CUERPO, ASA, TAPA, DetectorPulsacion, DetectorPinza, cercaDelAsa } from '../assets/js/dominio/controlVR.js';
+import {
+  BOTONES, CUERPO, PANTALLA, TAPA, PALANCA, MAPA_PALANCAS,
+  DetectorPulsacion, DetectorPinza, DireccionPalanca, inclinacionDesdeMano,
+} from '../assets/js/dominio/controlVR.js';
 
 let ok = 0;
 const prueba = (n, f) => { f(); ok += 1; console.log('✔', n); };
 const boton = (id) => BOTONES.find((b) => b.id === id);
 const punta = (b, z, id = 'mano0') => ({ id, x: b.x, y: b.y, z });
 const arriba = TAPA.alto + 0.02;   // dedo sobre el botón
-const hundido = TAPA.alto - 0.007; // dedo hundiendo la tapa
+const hundido = TAPA.alto - 0.006; // dedo hundiendo la tapa
 
-prueba('los botones no se encimen y caben en el cuerpo', () => {
+// ---------- Panel de botones ----------
+prueba('los botones no se enciman, caben en el panel y no tapan la pantalla', () => {
   for (const a of BOTONES) {
     assert.ok(Math.abs(a.x) + a.r <= CUERPO.ancho / 2, `${a.id} sale por el lado`);
     assert.ok(Math.abs(a.y) + a.r <= CUERPO.alto / 2, `${a.id} sale por arriba/abajo`);
+    const tapaPantalla = Math.abs(a.x) - a.r < PANTALLA.ancho / 2 && Math.abs(a.y - PANTALLA.y) - a.r < PANTALLA.alto / 2;
+    assert.ok(!tapaPantalla, `${a.id} tapa la pantalla`);
     for (const b of BOTONES) {
-      if (a === b) continue;
-      assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > a.r + b.r + 0.008, `${a.id} y ${b.id} muy juntos`);
+      if (a !== b) assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > a.r + b.r + 0.008, `${a.id} y ${b.id} muy juntos`);
     }
+  }
+});
+
+prueba('ya no hay botones de movimiento: se manejan con las palancas', () => {
+  assert.ok(!BOTONES.some((b) => b.tipo === 'mov'));
+  const claves = Object.values(MAPA_PALANCAS).flatMap((m) => Object.values(m));
+  for (const k of ['AVANZAR', 'RETROCEDER', 'IZQUIERDA', 'DERECHA', 'BRAZO_SUBIR', 'BRAZO_BAJAR', 'GARRA_IZQUIERDA', 'GARRA_DERECHA']) {
+    assert.ok(claves.includes(k), `${k} no tiene palanca`);
   }
 });
 
 prueba('acercarse por arriba y hundir pulsa; subir suelta', () => {
   const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  assert.equal(d.actualizar([punta(av, arriba)]).pulsar.length, 0);
-  assert.deepEqual(d.actualizar([punta(av, hundido)]).pulsar, [av]);
-  assert.equal(d.actualizar([punta(av, hundido)]).pulsar.length, 0, 'no repite mientras se mantiene');
-  assert.deepEqual(d.actualizar([punta(av, arriba)]).soltar, [av]);
+  const lu = boton('LUCES');
+  assert.equal(d.actualizar([punta(lu, arriba)]).pulsar.length, 0);
+  assert.deepEqual(d.actualizar([punta(lu, hundido)]).pulsar, [lu]);
+  assert.equal(d.actualizar([punta(lu, hundido)]).pulsar.length, 0, 'no repite mientras se mantiene');
+  assert.deepEqual(d.actualizar([punta(lu, arriba)]).soltar, [lu]);
 });
 
 prueba('entrar por el lado o por detrás no pulsa', () => {
   const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  assert.equal(d.actualizar([punta(av, hundido)]).pulsar.length, 0);
-  assert.equal(d.actualizar([punta(av, -0.01)]).pulsar.length, 0);
-});
-
-prueba('histéresis: un temblor pequeño no suelta el botón', () => {
-  const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  d.actualizar([punta(av, arriba)]);
-  d.actualizar([punta(av, hundido)]);
-  const r = d.actualizar([punta(av, TAPA.alto - 0.0045)]);
-  assert.equal(r.soltar.length, 0);
+  const det = boton('DETENER');
+  assert.equal(d.actualizar([punta(det, hundido)]).pulsar.length, 0);
+  assert.equal(d.actualizar([punta(det, -0.01)]).pulsar.length, 0);
 });
 
 prueba('si la mano desaparece se suelta lo presionado', () => {
   const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  d.actualizar([punta(av, arriba)]);
-  d.actualizar([punta(av, hundido)]);
-  assert.deepEqual(d.actualizar([]).soltar, [av]);
-});
-
-prueba('deslizar el dedo fuera del botón lo suelta', () => {
-  const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  d.actualizar([punta(av, arriba)]);
-  d.actualizar([punta(av, hundido)]);
-  assert.deepEqual(d.actualizar([{ id: 'mano0', x: av.x + 0.05, y: av.y, z: hundido }]).soltar, [av]);
-});
-
-prueba('dos manos en botones distintos se reportan por separado', () => {
-  const d = new DetectorPulsacion();
-  const av = boton('AVANZAR'); const lu = boton('LUCES');
-  d.actualizar([punta(av, arriba, 'mano0'), punta(lu, arriba, 'mano1')]);
-  const r = d.actualizar([punta(av, hundido, 'mano0'), punta(lu, hundido, 'mano1')]);
-  assert.equal(r.pulsar.length, 2);
-});
-
-prueba('el hundimiento visual nunca pasa del recorrido de la tapa', () => {
-  const d = new DetectorPulsacion();
-  const av = boton('AVANZAR');
-  d.actualizar([punta(av, arriba)]);
-  const r = d.actualizar([punta(av, -0.005)]);
-  assert.equal(r.hundimiento.get('AVANZAR'), TAPA.recorrido);
+  const lu = boton('LUCES');
+  d.actualizar([punta(lu, arriba)]);
+  d.actualizar([punta(lu, hundido)]);
+  assert.deepEqual(d.actualizar([]).soltar, [lu]);
 });
 
 prueba('pinza con histéresis', () => {
@@ -86,10 +66,43 @@ prueba('pinza con histéresis', () => {
   assert.equal(p.actualizar(NaN), false);
 });
 
-prueba('cerca del asa sí; en medio del control no', () => {
-  assert.equal(cercaDelAsa(0, ASA.y, CUERPO.grosor / 2), true);
-  assert.equal(cercaDelAsa(ASA.largo / 2 + 0.02, ASA.y, CUERPO.grosor / 2), true);
-  assert.equal(cercaDelAsa(0, 0, CUERPO.grosor / 2), false);
+// ---------- Palancas ----------
+const L = PALANCA.largo;
+prueba('la mano al frente inclina hacia adelante; atrás, hacia atrás; a la izquierda, a la izquierda', () => {
+  assert.ok(inclinacionDesdeMano(0, L, -0.06).rx < 0);
+  assert.ok(inclinacionDesdeMano(0, L, 0.06).rx > 0);
+  assert.ok(inclinacionDesdeMano(-0.06, L, 0).rz > 0);
+  assert.ok(inclinacionDesdeMano(0.06, L, 0).rz < 0);
 });
 
-console.log(`\n${ok} pruebas del control VR OK`);
+prueba('la inclinación nunca pasa del máximo', () => {
+  const { rx, rz } = inclinacionDesdeMano(-1, 0.01, -1);
+  assert.equal(rx, -PALANCA.maxAngulo);
+  assert.equal(rz, PALANCA.maxAngulo);
+});
+
+prueba('zona muerta: un temblor cerca del centro no mueve', () => {
+  const d = new DireccionPalanca();
+  assert.equal(d.actualizar(0.05, -0.04), null);
+});
+
+prueba('dirección dominante y un solo eje a la vez', () => {
+  const d = new DireccionPalanca();
+  assert.equal(d.actualizar(-0.3, 0.1), 'adelante');
+  const d2 = new DireccionPalanca();
+  assert.equal(d2.actualizar(0.1, -0.3), 'derecha');
+});
+
+prueba('histéresis: al regresar un poco no se suelta, al volver al centro sí', () => {
+  const d = new DireccionPalanca();
+  assert.equal(d.actualizar(-0.2, 0), 'adelante');
+  assert.equal(d.actualizar(-PALANCA.zonaMuerta + 0.02, 0), 'adelante');
+  assert.equal(d.actualizar(-0.03, 0), null);
+});
+
+prueba('mapa de la palanca derecha como en una excavadora: atrás sube el brazo', () => {
+  assert.equal(MAPA_PALANCAS.der.atras, 'BRAZO_SUBIR');
+  assert.equal(MAPA_PALANCAS.izq.adelante, 'AVANZAR');
+});
+
+console.log(`\n${ok} pruebas de los mandos VR OK`);

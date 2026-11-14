@@ -1,35 +1,58 @@
-// Modo VR (realidad mixta): un control virtual flota frente al usuario, que sigue viendo el mundo real
-// (WebXR «immersive-ar» con passthrough). Los botones se presionan con la punta del índice y el control se
-// toma con una pinza (pulgar + índice) sobre el asa para colocarlo donde se quiera.
-// Sin seguimiento de manos (mandos del visor o celular) se apunta con el rayo / se toca la pantalla.
+// Modo VR (realidad mixta): el usuario queda sentado dentro de una cabina de excavadora virtual y sigue
+// viendo el mundo real por los cristales (WebXR «immersive-ar» con passthrough). Se maneja con los mandos
+// de la cabina:
+//   · Palanca izquierda = chasis; palanca derecha = brazo y garra. Se toman con una pinza (pulgar + índice)
+//     o con el gatillo del mando y se inclinan; al soltarlas regresan al centro y el vehículo se detiene.
+//   · Panel de botones en el tablero: funciones, DETENER, recentrar y salir (se presionan con el índice,
+//     tocándolos con el mando o con rayo + gatillo).
 // Reutiliza ServicioComandos: mismas reglas que joystick, botones, voz, gestos y giroscopio.
-import { crearEmisor } from '../core/utilidades.js';
-import { BOTONES, CUERPO, ASA, DetectorPulsacion, DetectorPinza, cercaDelAsa } from '../dominio/controlVR.js';
-import { crearModeloControl } from '../ui/modeloControlVR.js';
+import { crearEmisor, formatoMovimiento } from '../core/utilidades.js';
+import {
+  BOTONES, CUERPO, PALANCA, MAPA_PALANCAS,
+  DetectorPulsacion, DetectorPinza, DireccionPalanca, inclinacionDesdeMano,
+} from '../dominio/controlVR.js';
+import { crearPanelBotones } from '../ui/modeloControlVR.js';
+import { crearCabina } from '../ui/modeloCabinaVR.js';
 
 const COLOR_WS = { en_linea: '#3ee58a', conectando: '#ffbf3c', desconectado: '#ff6b7a' };
 const TEXTO_WS = { en_linea: 'En línea', conectando: 'Conectando', desconectado: 'Sin conexión' };
+const ICONO_CLAVE = {
+  AVANZAR: 'bi-arrow-up', RETROCEDER: 'bi-arrow-down', IZQUIERDA: 'bi-arrow-left', DERECHA: 'bi-arrow-right',
+  BRAZO_SUBIR: 'bi-arrow-bar-up', BRAZO_BAJAR: 'bi-arrow-bar-down',
+  GARRA_IZQUIERDA: 'bi-arrow-counterclockwise', GARRA_DERECHA: 'bi-arrow-clockwise',
+};
+const LADOS = ['izq', 'der'];
 
 export class ServicioVR {
   emisor = crearEmisor(); // 'estado' (activo | inactivo)
   #store; #comandos; #cfg;
   #soportado = false; #activo = false; #iniciando = false;
   #T = null; #promesaThree = null; #promesaEscena = null;
-  #renderer = null; #escena = null; #camara = null; #modelo = null; #sesion = null; #tmp = null;
+  #renderer = null; #escena = null; #camara = null; #panel = null; #cabina = null; #sesion = null; #tmp = null;
   #manos = []; #mandos = []; #fuentes = [null, null];
   #detector = null; #pinzas = []; #pinzaPrevia = [false, false]; #medio = [null, null];
-  #agarre = null; #rayoPulsado = [null, null]; #colocado = false;
-  #movActual = null; #mensaje = ''; #tDisponible = 0; #aviso = ''; #avisoHasta = 0;
+  #rayoPulsado = [null, null]; #colocado = false; #conPiso = false; #orientacion = null;
+  #agarres = { izq: null, der: null };      // quién toma cada palanca: { i, tipo: 'mano' | 'mando' }
+  #direcciones = { izq: null, der: null };  // DireccionPalanca por lado
+  #claves = { izq: null, der: null };       // movimiento enviado por cada palanca
+  #rechazada = { izq: false, der: false };  // el último envío de esa palanca fue rechazado
+  #bloqueo = { izq: false, der: false };    // tras DETENER hay que regresar la palanca al centro
+  #mensaje = ''; #tDisponible = 0; #tPrevio = 0; #aviso = ''; #avisoHasta = 0;
 
   constructor({ store, comandos, emisor, config }) {
     this.#store = store; this.#comandos = comandos; this.#cfg = config;
     this.#detector = new DetectorPulsacion({ profundidad: config.profundidad });
     this.#pinzas = [0, 1].map(() => new DetectorPinza({ cierra: config.pinzaCierra, abre: config.pinzaAbre }));
+    for (const lado of LADOS) this.#direcciones[lado] = new DireccionPalanca();
 
-    // El estado de cada comando (enviando / aceptado / error) ilumina su botón virtual.
+    // Estado de cada comando: ilumina su botón y, si el servidor aceptó Luces o Encendido, lo refleja en la cabina.
     emisor.on('estado', ({ clave, estado }) => {
       const b = BOTONES.find((x) => x.clave === clave);
-      if (b && this.#modelo) this.#modelo.marcar(b.id, estado, performance.now());
+      if (b && this.#panel) this.#panel.marcar(b.id, estado, performance.now());
+      if (this.#activo && estado === 'aceptado') {
+        if (clave === 'LUCES') this.#cabina?.alternarLuces();
+        if (clave === 'ENCENDIDO') this.#cabina?.alternarEncendido();
+      }
     });
     store.on('mensaje', (m) => { this.#mensaje = m?.texto ?? ''; });
   }
@@ -37,13 +60,16 @@ export class ServicioVR {
   get soportado() { return this.#soportado; }
   get activo() { return this.#activo; }
   #msg(texto, tipo = 'info') { this.#store.set('mensaje', { texto, tipo, id: Date.now() + Math.random() }); }
+  #depurar(...datos) { if (this.#cfg.depurar) console.debug('[VR]', ...datos); }
+  /** Aviso en la pantalla del panel durante unos segundos. */
+  #avisar(texto) { this.#aviso = texto; this.#avisoHasta = performance.now() + 2500; }
 
   /** Comprueba si el navegador permite realidad mixta y, si es así, deja todo precargado. */
   async comprobar() {
     try {
       this.#soportado = Boolean(window.isSecureContext && navigator.xr && await navigator.xr.isSessionSupported('immersive-ar'));
     } catch { this.#soportado = false; }
-    // Precarga three.js y el modelo para que la sesión arranque dentro del mismo toque del usuario.
+    // Precarga three.js y el panel para que la sesión arranque dentro del mismo toque del usuario.
     if (this.#soportado) this.#prepararEscena().catch(() => { /* se reintenta al activar */ });
     return this.#soportado;
   }
@@ -77,38 +103,40 @@ export class ServicioVR {
     luz.position.set(0.4, 1, 0.6);
     escena.add(luz);
 
-    const modelo = await crearModeloControl(T);
-    escena.add(modelo.grupo, ...modelo.cursores);
-    if (this.#cfg.mostrarManos) escena.add(...modelo.manos);
+    const panel = await crearPanelBotones(T);
+    escena.add(...panel.cursores);
+    if (this.#cfg.mostrarManos) escena.add(...panel.manos);
 
     for (const i of [0, 1]) {
       const mano = renderer.xr.getHand(i);
       const mando = renderer.xr.getController(i);
       escena.add(mano, mando);
-      mando.add(modelo.rayos[i]);
+      mando.add(panel.rayos[i]);
       this.#manos[i] = mano; this.#mandos[i] = mando;
 
       mando.addEventListener('connected', (e) => {
         this.#fuentes[i] = e.data;
+        panel.rayos[i].visible = !e.data.hand && e.data.targetRayMode === 'tracked-pointer';
         this.#depurar('entrada', i, e.data.hand ? 'mano' : e.data.targetRayMode, e.data.handedness);
-        modelo.rayos[i].visible = !e.data.hand && e.data.targetRayMode === 'tracked-pointer';
       });
       mando.addEventListener('disconnected', () => {
         this.#fuentes[i] = null;
-        modelo.rayos[i].visible = false;
-        modelo.cursores[i].visible = false;
+        panel.rayos[i].visible = false;
+        panel.cursores[i].visible = false;
         this.#alSeleccion(i, false);
-        if (this.#agarre?.i === i) this.#agarre = null;
+        for (const lado of LADOS) if (this.#agarres[lado]?.i === i) this.#soltarPalanca(lado);
       });
       mando.addEventListener('selectstart', () => this.#alSeleccion(i, true));
       mando.addEventListener('selectend', () => this.#alSeleccion(i, false));
+      mando.addEventListener('squeezestart', () => this.#tomarConMando(i));
+      mando.addEventListener('squeezeend', () => this.#soltarDeMando(i));
     }
 
     this.#tmp = {
-      a: new T.Vector3(), b: new T.Vector3(), c: new T.Vector3(), cabeza: new T.Vector3(),
-      q: new T.Quaternion(), guia: new T.Object3D(), rayo: new T.Raycaster(),
+      a: new T.Vector3(), b: new T.Vector3(), c: new T.Vector3(), cabeza: new T.Vector3(), puno: new T.Vector3(),
+      q: new T.Quaternion(), orientacion: new T.Quaternion(), rayo: new T.Raycaster(),
     };
-    this.#renderer = renderer; this.#escena = escena; this.#modelo = modelo;
+    this.#renderer = renderer; this.#escena = escena; this.#panel = panel;
     this.#camara = new T.PerspectiveCamera(70, 1, 0.01, 20);
   }
 
@@ -133,18 +161,20 @@ export class ServicioVR {
         if (sesion.visibilityState !== 'visible') this.#soltarTodo(); // menú del sistema u otra app encima
       });
 
-      this.#renderer.xr.setReferenceSpaceType('local');
+      // Con «local-floor» se conoce la altura real de los ojos y la cabina queda apoyada en el piso real.
+      this.#conPiso = Boolean(sesion.enabledFeatures?.includes('local-floor'));
+      this.#renderer.xr.setReferenceSpaceType(this.#conPiso ? 'local-floor' : 'local');
       await this.#renderer.xr.setSession(sesion);
       // En el Quest la imagen va directo al visor; un emulador (Immersive Web Emulator) la muestra en este
       // lienzo, así que mientras dure la sesión se hace visible a pantalla completa.
       this.#renderer.domElement.classList.add('activo');
 
       this.#colocado = false;
-      this.#agarre = null;
-      this.#detector.reiniciar();
+      this.#soltarTodo();
+      this.#tPrevio = 0;
       this.#renderer.setAnimationLoop(this.#cuadro);
       this.emisor.emit('estado', 'activo');
-      this.#msg('Modo VR activo: presiona los botones con el índice y pellizca el asa para mover el control.', 'info');
+      this.#msg('Modo VR activo: toma las palancas con un pellizco y presiona los botones del tablero con el índice.', 'info');
       return true;
     } catch (e) {
       if (sesion) { try { await sesion.end(); } catch { /* ya terminó */ } }
@@ -166,8 +196,9 @@ export class ServicioVR {
     if (!this.#activo) return;
     this.#renderer?.setAnimationLoop(null);
     this.#renderer?.domElement.classList.remove('activo');
-    for (const i of [0, 1]) this.#modelo?.dibujarMano(i, null);
+    for (const i of [0, 1]) this.#panel?.dibujarMano(i, null);
     this.#soltarTodo();
+    this.#quitarCabina();
     this.#sesion = null;
     this.#activo = false;
     this.#store.set('modo', 'manual');
@@ -175,55 +206,111 @@ export class ServicioVR {
     this.#msg('Modo VR desactivado.', 'info');
   };
 
-  /** Suelta cualquier botón presionado y deja el vehículo quieto. */
+  /** Suelta botones y palancas y deja el vehículo quieto. */
   #soltarTodo() {
     this.#detector.reiniciar();
     this.#rayoPulsado = [null, null];
-    this.#agarre = null;
-    this.#movActual = null;
-    this.#comandos.soltar('vr');
+    for (const lado of LADOS) this.#soltarPalanca(lado);
+    this.#bloqueo = { izq: false, der: false };
   }
 
-  // ---------- Acciones de los botones ----------
+  // ---------- Palancas ----------
+  #tomarPalanca(lado, i, tipo) {
+    if (this.#agarres[lado]) return;
+    this.#agarres[lado] = { i, tipo };
+    this.#direcciones[lado].reiniciar();
+    this.#fuentes[i]?.gamepad?.hapticActuators?.[0]?.pulse?.(0.4, 20);
+    this.#depurar('palanca tomada', lado, tipo);
+  }
+
+  #soltarPalanca(lado) {
+    if (this.#agarres[lado]) this.#depurar('palanca soltada', lado);
+    this.#agarres[lado] = null;
+    this.#direcciones[lado]?.reiniciar();
+    this.#cabina?.inclinar(lado, 0, 0, false);
+    this.#aplicarDireccion(lado, null);
+  }
+
+  /** Envía el movimiento de una palanca (solo cuando cambia la dirección). */
+  #aplicarDireccion(lado, dir) {
+    if (!dir) this.#bloqueo[lado] = false;       // regresó al centro: se puede volver a mover
+    if (this.#bloqueo[lado]) return;
+    const clave = dir ? MAPA_PALANCAS[lado][dir] : null;
+    if (clave === this.#claves[lado]) return;
+
+    const duenio = `vr:${lado}`;
+    this.#claves[lado] = clave;
+    this.#rechazada[lado] = false;
+    if (!clave) { this.#comandos.soltar(duenio); return; }
+
+    if (!this.#comandos.puedeEnviar(clave)) {
+      this.#rechazada[lado] = true;
+      this.#avisar(`${formatoMovimiento(clave)}: no existe en el catálogo`);
+      return;
+    }
+    const ok = this.#comandos.enviar(clave, duenio, this.#cfg.origen);
+    this.#depurar('palanca', lado, clave, ok ? 'enviado' : `rechazado: ${this.#mensaje}`);
+    if (!ok) { this.#rechazada[lado] = true; this.#avisar(this.#mensaje || 'No se pudo enviar el movimiento.'); }
+  }
+
+  /** Posición (en el mundo) del puño de una palanca. */
+  #puno(lado, destino) {
+    return this.#cabina.palancas[lado].pivote.localToWorld(destino.set(0, PALANCA.largo, 0));
+  }
+
+  /** Palanca libre más cercana al punto, si está a su alcance. */
+  #palancaCerca(punto, alcance = PALANCA.alcance) {
+    if (!this.#cabina) return null;
+    let mejor = null; let dMejor = alcance;
+    for (const lado of LADOS) {
+      const d = this.#puno(lado, this.#tmp.puno).distanceTo(punto);
+      if (d < dMejor) { mejor = lado; dMejor = d; }
+    }
+    return mejor;
+  }
+
+  #tomarConMando(i) {
+    const f = this.#fuentes[i];
+    if (!this.#activo || !f || f.hand) return false;
+    const lado = this.#palancaCerca(this.#mandos[i].getWorldPosition(this.#tmp.c), PALANCA.alcance * 1.5);
+    if (lado && !this.#agarres[lado]) { this.#tomarPalanca(lado, i, 'mando'); return true; }
+    return false;
+  }
+
+  #soltarDeMando(i) {
+    for (const lado of LADOS) if (this.#agarres[lado]?.tipo === 'mando' && this.#agarres[lado].i === i) this.#soltarPalanca(lado);
+  }
+
+  // ---------- Botones del panel ----------
   #pulsar(b, i = null) {
     const f = i === null ? null : this.#fuentes[i];
     f?.gamepad?.hapticActuators?.[0]?.pulse?.(0.6, 25);
+    this.#panel.pulso(b.id, performance.now());
 
-    this.#modelo.pulso(b.id, performance.now());
     if (b.tipo === 'salir') { this.desactivar(); return; }
-    if (b.tipo === 'detener') { this.#movActual = null; this.#comandos.detener(); return; }
+    if (b.tipo === 'recentrar') { this.#construirCabina(this.#tmp.cabeza, this.#tmp.orientacion); this.#avisar('Cabina centrada'); return; }
+    if (b.tipo === 'detener') {
+      // Prioridad absoluta; las palancas tomadas deben regresar al centro antes de volver a mover.
+      for (const lado of LADOS) { this.#claves[lado] = null; this.#bloqueo[lado] = Boolean(this.#agarres[lado]); }
+      this.#comandos.detener();
+      this.#depurar('pulsar', b.id);
+      return;
+    }
     if (!this.#comandos.puedeEnviar(b.clave)) {
-      this.#modelo.marcar(b.id, 'error', performance.now());
-      this.#depurar('pulsar', b.id, 'no existe en el catálogo');
+      this.#panel.marcar(b.id, 'error', performance.now());
       this.#avisar(`${b.etiqueta}: no existe en el catálogo`);
       return;
     }
-
-    let enviado;
-    if (b.tipo === 'mov') { // se mantiene mientras el dedo siga presionando
-      enviado = this.#comandos.enviar(b.clave, 'vr', this.#cfg.origen);
-      if (enviado) this.#movActual = b.id;
-    } else { // funciones de un solo toque: primero se frena lo que se movía
-      this.#comandos.soltar('vr');
-      this.#movActual = null;
-      enviado = this.#comandos.enviar(b.clave, 'btn:vr', this.#cfg.origen);
+    // Funciones de un solo toque: primero se frena lo que se movía
+    for (const lado of LADOS) {
+      if (this.#claves[lado]) { this.#comandos.soltar(`vr:${lado}`); this.#claves[lado] = null; this.#bloqueo[lado] = Boolean(this.#agarres[lado]); }
     }
-    this.#depurar('pulsar', b.id, enviado ? 'enviado' : `rechazado: ${this.#mensaje}`);
-    if (!enviado) this.#avisar(this.#mensaje || 'No se pudo enviar el comando.');
+    const ok = this.#comandos.enviar(b.clave, 'btn:vr', this.#cfg.origen);
+    this.#depurar('pulsar', b.id, ok ? 'enviado' : `rechazado: ${this.#mensaje}`);
+    if (!ok) this.#avisar(this.#mensaje || 'No se pudo enviar el comando.');
   }
 
-  /** Muestra un aviso en la pantalla del control durante unos segundos (si no, lo tapa el nombre del botón). */
-  #avisar(texto) { this.#aviso = texto; this.#avisoHasta = performance.now() + 2500; }
-
-  #depurar(...datos) { if (this.#cfg.depurar) console.debug('[VR]', ...datos); }
-
-  #soltarBoton(b) {
-    this.#depurar('soltar', b.id);
-    if (b.tipo === 'mov' && this.#movActual === b.id) {
-      this.#movActual = null;
-      this.#comandos.soltar('vr');
-    }
-  }
+  #soltarBoton(b) { this.#depurar('soltar', b.id); }
 
   // ---------- Rayo (mandos y pantalla táctil) ----------
   #rayoDesde(i) {
@@ -233,7 +320,7 @@ export class ServicioVR {
     mando.getWorldQuaternion(q);
     b.set(0, 0, -1).applyQuaternion(q);
     rayo.set(a, b);
-    return rayo.intersectObjects(this.#modelo.objetivos, false)[0] ?? null;
+    return rayo.intersectObjects(this.#panel.objetivos, false)[0] ?? null;
   }
 
   #alSeleccion(i, inicio) {
@@ -241,187 +328,182 @@ export class ServicioVR {
     if (!this.#activo || (inicio && (!f || f.hand))) return; // con manos se usa el dedo, no el pellizco del sistema
 
     if (inicio) {
+      if (this.#tomarConMando(i)) return;               // gatillo junto al puño: toma la palanca
       const hit = this.#rayoDesde(i);
       if (!hit) { this.#depurar('rayo sin objetivo', i); return; }
-      if (hit.object === this.#modelo.asa) { this.#agarre = { tipo: 'rayo', i, distancia: hit.distance }; return; }
       const b = hit.object.userData.boton;
       if (b) { this.#rayoPulsado[i] = b; this.#pulsar(b, i); }
       return;
     }
 
-    if (this.#agarre?.tipo === 'rayo' && this.#agarre.i === i) this.#agarre = null;
+    this.#soltarDeMando(i);
     const b = this.#rayoPulsado[i];
     if (b) { this.#rayoPulsado[i] = null; this.#soltarBoton(b); }
   }
 
-  // ---------- Colocación ----------
-  #colocarInicial(cabeza, orientacion) {
-    const { a, guia } = this.#tmp;
-    const pantallaTactil = this.#sesion?.interactionMode === 'screen-space'; // celular
-    const distancia = pantallaTactil ? this.#cfg.distanciaCelular : this.#cfg.distancia;
-    const bajada = pantallaTactil ? this.#cfg.bajadaCelular : this.#cfg.bajada;
+  // ---------- Cabina ----------
+  /** Crea la cabina alrededor del usuario, de frente a donde mira (solo gira en el eje vertical). */
+  #construirCabina(cabeza, orientacion) {
+    for (const lado of LADOS) this.#soltarPalanca(lado);
+    this.#quitarCabina();
+    const T = this.#T;
+    const altura = this.#conPiso ? Math.min(1.9, Math.max(0.9, cabeza.y)) : this.#cfg.alturaOjos;
+    const cabina = crearCabina(T, { altura, pluma: this.#cfg.pluma });
 
-    a.set(0, 0, -1).applyQuaternion(orientacion);
-    a.y = 0;
-    if (a.lengthSq() < 1e-4) a.set(0, 0, -1);
-    a.normalize();
+    const adelante = new T.Vector3(0, 0, -1).applyQuaternion(orientacion);
+    adelante.y = 0;
+    if (adelante.lengthSq() < 1e-4) adelante.set(0, 0, -1);
+    adelante.normalize();
+    cabina.grupo.position.copy(cabeza);
+    cabina.grupo.rotation.y = Math.atan2(-adelante.x, -adelante.z);
+    cabina.anclaPanel.add(this.#panel.grupo); // el panel de botones queda montado en el tablero
 
-    guia.position.copy(cabeza).addScaledVector(a, distancia);
-    guia.position.y -= bajada;
-    guia.lookAt(cabeza); // la cara del control mira hacia el usuario
-    this.#modelo.grupo.position.copy(guia.position);
-    this.#modelo.grupo.quaternion.copy(guia.quaternion);
-    this.#colocado = true;
+    this.#escena.add(cabina.grupo);
+    this.#cabina = cabina;
+    this.#depurar('cabina', `altura de los ojos ${altura.toFixed(2)} m`, this.#conPiso ? '(piso real)' : '(supuesta, sentado)');
   }
 
-  /** Mueve el control para que el asa quede en `punto`, siempre de frente al usuario (suavizado). */
-  #moverA(punto, cabeza) {
-    const { guia } = this.#tmp;
-    const grupo = this.#modelo.grupo;
-    guia.position.copy(punto);
-    guia.lookAt(cabeza);
-    guia.translateY(-ASA.y);
-    guia.translateZ(-CUERPO.grosor / 2);
-    grupo.position.lerp(guia.position, this.#cfg.suavizado);
-    grupo.quaternion.slerp(guia.quaternion, this.#cfg.suavizado);
+  #quitarCabina() {
+    if (!this.#cabina) return;
+    this.#cabina.anclaPanel.remove(this.#panel.grupo); // el panel se reutiliza: no se libera
+    this.#escena.remove(this.#cabina.grupo);
+    this.#cabina.liberar();
+    this.#cabina = null;
   }
 
   // ---------- Bucle de cada cuadro ----------
   #cuadro = (t, frame) => {
     const r = this.#renderer;
-    const m = this.#modelo;
-    const { b: tmpB, c: tmpC, cabeza } = this.#tmp;
+    const panel = this.#panel;
+    const { b: tmpB, cabeza } = this.#tmp;
+    const dt = this.#tPrevio ? (t - this.#tPrevio) / 1000 : 0;
+    this.#tPrevio = t;
     const pose = frame?.getViewerPose(r.xr.getReferenceSpace());
 
     if (pose) {
       const p = pose.transform.position;
       const o = pose.transform.orientation;
       cabeza.set(p.x, p.y, p.z);
-      if (!this.#colocado) this.#colocarInicial(cabeza, this.#tmp.q.set(o.x, o.y, o.z, o.w));
+      this.#tmp.orientacion.set(o.x, o.y, o.z, o.w);
+      if (!this.#colocado) { this.#construirCabina(cabeza, this.#tmp.orientacion); this.#colocado = true; }
 
-      const grupo = m.grupo;
-      grupo.updateMatrixWorld(true);
-      let resaltarAsa = 0.35;
+      const cab = this.#cabina;
+      cab.grupo.updateMatrixWorld(true);
+      const resalte = { izq: 0, der: 0 };
       const puntasMundo = [];
+      const manoDe = [null, null]; // punto de agarre de cada entrada (mano: pinza; mando: su posición)
 
-      // 1) Manos: punta del índice (para presionar) y pinza (para tomar el asa)
+      // 1) Manos: punta del índice (botones) y pinza (palancas)
       for (const i of [0, 1]) {
         const f = this.#fuentes[i];
+        if (this.#cfg.mostrarManos) panel.dibujarMano(i, f?.hand ? this.#manos[i].joints : null);
         const indice = f?.hand ? this.#manos[i].joints?.['index-finger-tip'] : null;
         const pulgar = f?.hand ? this.#manos[i].joints?.['thumb-tip'] : null;
-        if (this.#cfg.mostrarManos) m.dibujarMano(i, f?.hand ? this.#manos[i].joints : null);
 
         if (!indice?.visible) {
-          m.cursores[i].visible = false;
+          panel.cursores[i].visible = false;
           this.#pinzas[i].actualizar(NaN);
           this.#pinzaPrevia[i] = false;
-          if (this.#agarre?.tipo === 'mano' && this.#agarre.i === i) this.#agarre = null;
+          for (const lado of LADOS) if (this.#agarres[lado]?.tipo === 'mano' && this.#agarres[lado].i === i) this.#soltarPalanca(lado);
           continue;
         }
 
-        m.cursores[i].visible = true;
-        m.cursores[i].position.copy(indice.position);
-
+        panel.cursores[i].visible = true;
+        panel.cursores[i].position.copy(indice.position);
         const dist = pulgar?.visible ? indice.position.distanceTo(pulgar.position) : NaN;
         const cerrada = this.#pinzas[i].actualizar(dist);
         this.#medio[i] ??= indice.position.clone();
         if (pulgar?.visible) this.#medio[i].copy(indice.position).add(pulgar.position).multiplyScalar(0.5);
         else this.#medio[i].copy(indice.position);
+        manoDe[i] = this.#medio[i];
 
-        tmpB.copy(this.#medio[i]);
-        grupo.worldToLocal(tmpB);
-        const enAsa = cercaDelAsa(tmpB.x, tmpB.y, tmpB.z);
-        if (enAsa) resaltarAsa = 0.8;
-
-        if (cerrada && !this.#pinzaPrevia[i] && !this.#agarre && enAsa) this.#agarre = { tipo: 'mano', i };
-        if (!cerrada && this.#agarre?.tipo === 'mano' && this.#agarre.i === i) this.#agarre = null;
+        const cerca = this.#palancaCerca(this.#medio[i]);
+        if (cerca) resalte[cerca] = 1;
+        if (cerrada && !this.#pinzaPrevia[i] && cerca && !this.#agarres[cerca]) this.#tomarPalanca(cerca, i, 'mano');
+        if (!cerrada) for (const lado of LADOS) if (this.#agarres[lado]?.tipo === 'mano' && this.#agarres[lado].i === i) this.#soltarPalanca(lado);
         this.#pinzaPrevia[i] = cerrada;
 
-        // WebXR entrega el CENTRO de la yema: se resta su radio para pulsar al tocar con la piel, no al hundir el dedo.
-        if (this.#agarre?.i !== i) puntasMundo.push({ id: `mano${i}`, p: indice.position, radio: indice.jointRadius ?? 0.008 });
+        const sostiene = LADOS.some((lado) => this.#agarres[lado]?.i === i);
+        // WebXR entrega el CENTRO de la yema: se resta su radio para pulsar al tocar con la piel.
+        if (!sostiene) puntasMundo.push({ id: `mano${i}`, p: indice.position, radio: indice.jointRadius ?? 0.008 });
       }
 
-      // Mandos: la punta del mando también presiona los botones al tocarlos (además del rayo + gatillo)
-      for (const i of [0, 1]) {
-        const f = this.#fuentes[i];
-        if (!f || f.hand || f.targetRayMode !== 'tracked-pointer' || !this.#mandos[i].visible) continue;
-        if (this.#agarre?.i === i) continue;
-        puntasMundo.push({ id: `mando${i}`, p: this.#mandos[i].getWorldPosition(new this.#T.Vector3()), radio: 0.006 });
-      }
-
-      // 2) Rayos de los mandos: foco y largo del rayo
+      // 2) Mandos: tocar botones con la punta, acercarse a las palancas y rayo hacia el panel
       const focoRayo = new Set();
       for (const i of [0, 1]) {
         const f = this.#fuentes[i];
         if (!f || f.hand || !this.#mandos[i].visible) continue;
+        const pos = this.#mandos[i].getWorldPosition(new this.#T.Vector3());
+        manoDe[i] = pos;
+        const cerca = this.#palancaCerca(pos, PALANCA.alcance * 1.5);
+        if (cerca) resalte[cerca] = 1;
+        const sostiene = LADOS.some((lado) => this.#agarres[lado]?.i === i);
+        if (f.targetRayMode === 'tracked-pointer' && !sostiene) puntasMundo.push({ id: `mando${i}`, p: pos, radio: 0.006 });
         const hit = this.#rayoDesde(i);
-        m.rayos[i].scale.z = hit ? hit.distance : 1.5;
-        if (hit?.object === m.asa) resaltarAsa = 0.8;
-        else if (hit?.object.userData.boton) focoRayo.add(hit.object.userData.boton.id);
+        panel.rayos[i].visible = f.targetRayMode === 'tracked-pointer' && !sostiene && !cerca;
+        panel.rayos[i].scale.z = hit ? hit.distance : 1.5;
+        if (hit?.object.userData.boton) focoRayo.add(hit.object.userData.boton.id);
       }
 
-      // 3) Mover el control si está tomado
-      if (this.#agarre) {
-        resaltarAsa = 1.2;
-        if (this.#agarre.tipo === 'mano') this.#moverA(this.#medio[this.#agarre.i], cabeza);
-        else {
-          const { a, q } = this.#tmp;
-          const mando = this.#mandos[this.#agarre.i];
-          mando.getWorldPosition(tmpC);
-          mando.getWorldQuaternion(q);
-          a.set(0, 0, -1).applyQuaternion(q);
-          this.#moverA(tmpC.addScaledVector(a, this.#agarre.distancia), cabeza);
-        }
-        grupo.updateMatrixWorld(true);
+      // 3) Palancas tomadas: la inclinación sigue a la mano y se envía la dirección
+      for (const lado of LADOS) {
+        cab.resaltar(lado, resalte[lado] * 0.6);
+        const ag = this.#agarres[lado];
+        const punto = ag ? manoDe[ag.i] : null;
+        if (!punto) { if (ag) this.#soltarPalanca(lado); continue; }
+        tmpB.copy(punto);
+        cab.grupo.worldToLocal(tmpB);
+        const pv = cab.palancas[lado].pivote.position;
+        const { rx, rz } = inclinacionDesdeMano(tmpB.x - pv.x, tmpB.y - pv.y, tmpB.z - pv.z, PALANCA.maxAngulo);
+        cab.inclinar(lado, rx, rz, true);
+        this.#aplicarDireccion(lado, this.#direcciones[lado].actualizar(rx, rz));
       }
-      m.resaltarAsa(resaltarAsa);
 
-      // 4) Pulsaciones con el dedo (coordenadas locales, z medida desde la cara)
+      // 4) Botones del panel (coordenadas locales del panel, z medida desde su cara)
+      panel.grupo.updateMatrixWorld(true);
       const puntas = puntasMundo.map(({ id, p: pm, radio }) => {
         tmpB.copy(pm);
-        grupo.worldToLocal(tmpB);
+        panel.grupo.worldToLocal(tmpB);
         return { id, x: tmpB.x, y: tmpB.y, z: tmpB.z - CUERPO.grosor / 2 - radio };
       });
       const res = this.#detector.actualizar(puntas);
       for (const b of res.soltar) this.#soltarBoton(b);
       for (const b of res.pulsar) this.#pulsar(b);
-
-      for (const b of BOTONES) m.hundir(b.id, res.hundimiento.get(b.id) ?? 0);
-      for (const b of this.#rayoPulsado) if (b) m.hundir(b.id, 0.008);
+      for (const b of BOTONES) panel.hundir(b.id, res.hundimiento.get(b.id) ?? 0);
+      for (const b of this.#rayoPulsado) if (b) panel.hundir(b.id, 0.008);
       const foco = new Set([...res.encima, ...focoRayo]);
-      m.enfocar(foco);
+      panel.enfocar(foco);
 
-      // 5) Pantalla: lo que se apunta, lo que se mueve o el último mensaje
+      // 5) Pantalla: aviso, movimiento de una palanca, botón apuntado o el último mensaje
+      const enCurso = LADOS.map((l) => (!this.#rechazada[l] ? this.#claves[l] : null)).find(Boolean) ?? null;
       const enFoco = BOTONES.find((b) => foco.has(b.id));
-      const moviendo = BOTONES.find((b) => b.id === this.#movActual);
       const hayAviso = t < this.#avisoHasta;
-      m.escribirPantalla({
-        linea: hayAviso ? this.#aviso
-          : this.#agarre ? 'Moviendo el control…' : (enFoco?.etiqueta ?? moviendo?.etiqueta ?? (this.#mensaje || 'Listo')),
-        tono: hayAviso ? '#ff6b7a' : moviendo && !enFoco ? '#ffbf3c' : '#eaf2ff',
-        icono: hayAviso ? 'bi-exclamation-triangle-fill' : this.#agarre ? 'bi-arrows-move' : (enFoco ?? moviendo)?.icono ?? null,
-        conexion: TEXTO_WS[this.#store.get('ws')] ?? '',
+      let linea; let icono = null; let tono = '#eaf2ff';
+      if (hayAviso) { linea = this.#aviso; icono = 'bi-exclamation-triangle-fill'; tono = '#ff6b7a'; }
+      else if (enCurso) { linea = formatoMovimiento(enCurso); icono = ICONO_CLAVE[enCurso]; tono = '#ffbf3c'; }
+      else if (enFoco) { linea = enFoco.etiqueta; icono = enFoco.icono; }
+      else if (LADOS.some((l) => this.#agarres[l])) { linea = 'Palanca tomada'; icono = 'bi-joystick'; }
+      else linea = this.#mensaje || 'Listo';
+      panel.escribirPantalla({
+        linea, icono, tono,
         punto: COLOR_WS[this.#store.get('ws')] ?? '#ffbf3c',
+        conexion: TEXTO_WS[this.#store.get('ws')] ?? '',
       });
-
-      // Franja de luz: naranja parpadeando si se mueve, azul al mover el control, si no el color de la conexión
-      const ws = { en_linea: 0x3ee58a, conectando: 0xffbf3c }[this.#store.get('ws')] ?? 0xff6b7a;
-      if (moviendo) m.estadoLuz(0xffb020, true);
-      else if (this.#agarre) m.estadoLuz(0x2f8bff, true);
-      else m.estadoLuz(ws, false);
 
       // 6) Disponibilidad de cada botón según el catálogo (no hace falta cada cuadro)
       if (t - this.#tDisponible > 500) {
         this.#tDisponible = t;
         const libre = this.#store.get('demo').estado === 'libre';
         for (const b of BOTONES) {
-          const ok = b.tipo === 'salir' || b.tipo === 'detener' || (libre && this.#comandos.puedeEnviar(b.clave));
-          m.disponible(b.id, ok);
+          const ok = b.tipo !== 'unico' || (libre && this.#comandos.puedeEnviar(b.clave));
+          panel.disponible(b.id, ok);
         }
       }
+
+      cab.animar(t, dt, enCurso);
     }
 
-    m.actualizarBotones(t);
+    panel.actualizarBotones(t);
     r.render(this.#escena, this.#camara);
   };
 }

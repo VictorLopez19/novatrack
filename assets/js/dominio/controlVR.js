@@ -1,69 +1,50 @@
-// Diseño y lógica del control virtual (VR/AR). Todo está en metros y en el sistema local del control:
-// X a la derecha, Y hacia arriba sobre la cara del control y Z saliendo de la cara hacia el usuario.
-// No depende de three.js ni del navegador, así que se puede probar con Node.
+// Diseño y lógica de los mandos de la cabina VR. No depende de three.js ni del navegador (se prueba con Node).
+//
+// 1) Panel de botones del tablero: sistema local del panel, en metros. X a la derecha, Y hacia arriba sobre
+//    la cara del panel y Z saliendo de la cara hacia el usuario.
+// 2) Palancas (joysticks) de las consolas: la inclinación se calcula desde la posición de la mano respecto
+//    al pivote, en el sistema de la cabina (-Z hacia el frente).
 
-export const CUERPO = Object.freeze({ ancho: 0.40, alto: 0.22, grosor: 0.022, radio: 0.03 });
-export const ASA = Object.freeze({ y: 0.138, largo: 0.11, radio: 0.009 });
-export const PANTALLA = Object.freeze({ y: 0.075, ancho: 0.15, alto: 0.036 });
+export const CUERPO = Object.freeze({ ancho: 0.42, alto: 0.16, grosor: 0.02, radio: 0.022 });
+export const PANTALLA = Object.freeze({ y: 0.04, ancho: 0.22, alto: 0.05 });
 export const TAPA = Object.freeze({ alto: 0.012, recorrido: 0.008 }); // altura sobre la cara y cuánto se hunde
 
-const R_MOV = 0.017; // botones de movimiento
 const R_UNI = 0.013; // funciones de un solo toque
+const Y_FILA = -0.035;
 
-// tipo: 'mov' (se mantiene mientras se presiona) | 'unico' (un disparo) | 'detener' | 'salir'
+// tipo: 'unico' (un disparo) | 'detener' | 'salir' | 'recentrar'
 export const BOTONES = Object.freeze([
-  // Cruceta izquierda: chasis
-  { id: 'AVANZAR', tipo: 'mov', clave: 'AVANZAR', etiqueta: 'Avanzar', icono: 'bi-arrow-up', x: -0.125, y: 0.028, r: R_MOV, tono: 'azul' },
-  { id: 'RETROCEDER', tipo: 'mov', clave: 'RETROCEDER', etiqueta: 'Retroceder', icono: 'bi-arrow-down', x: -0.125, y: -0.068, r: R_MOV, tono: 'azul' },
-  { id: 'IZQUIERDA', tipo: 'mov', clave: 'IZQUIERDA', etiqueta: 'Izquierda', icono: 'bi-arrow-left', x: -0.173, y: -0.02, r: R_MOV, tono: 'azul' },
-  { id: 'DERECHA', tipo: 'mov', clave: 'DERECHA', etiqueta: 'Derecha', icono: 'bi-arrow-right', x: -0.077, y: -0.02, r: R_MOV, tono: 'azul' },
-
-  // Cruceta derecha: brazo y garra
-  { id: 'BRAZO_SUBIR', tipo: 'mov', clave: 'BRAZO_SUBIR', etiqueta: 'Brazo arriba', icono: 'bi-arrow-bar-up', x: 0.125, y: 0.028, r: R_MOV, tono: 'azul' },
-  { id: 'BRAZO_BAJAR', tipo: 'mov', clave: 'BRAZO_BAJAR', etiqueta: 'Brazo abajo', icono: 'bi-arrow-bar-down', x: 0.125, y: -0.068, r: R_MOV, tono: 'azul' },
-  { id: 'GARRA_IZQUIERDA', tipo: 'mov', clave: 'GARRA_IZQUIERDA', etiqueta: 'Garra izquierda', icono: 'bi-arrow-counterclockwise', x: 0.077, y: -0.02, r: R_MOV, tono: 'azul' },
-  { id: 'GARRA_DERECHA', tipo: 'mov', clave: 'GARRA_DERECHA', etiqueta: 'Garra derecha', icono: 'bi-arrow-clockwise', x: 0.173, y: -0.02, r: R_MOV, tono: 'azul' },
-
-  // Funciones (centro)
-  { id: 'SONIDO', tipo: 'unico', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', x: -0.026, y: 0.02, r: R_UNI, tono: 'morado' },
-  { id: 'VELOCIDAD', tipo: 'unico', clave: 'VELOCIDAD', etiqueta: 'Velocidad', icono: 'bi-speedometer2', x: 0.026, y: 0.02, r: R_UNI, tono: 'morado' },
-  { id: 'ENCENDIDO', tipo: 'unico', clave: 'ENCENDIDO', etiqueta: 'Encendido', icono: 'bi-power', x: -0.026, y: -0.022, r: R_UNI, tono: 'morado' },
-  { id: 'LUCES', tipo: 'unico', clave: 'LUCES', etiqueta: 'Luces', icono: 'bi-lightbulb-fill', x: 0.026, y: -0.022, r: R_UNI, tono: 'morado' },
-
-  // Seguridad y salida
-  { id: 'DETENER', tipo: 'detener', clave: 'DETENER', etiqueta: 'Detener', icono: 'bi-stop-fill', x: 0, y: -0.072, r: 0.022, tono: 'rojo' },
-  { id: 'SALIR', tipo: 'salir', clave: null, etiqueta: 'Salir de VR', icono: 'bi-x-lg', x: 0.176, y: 0.088, r: 0.011, tono: 'gris' },
-]);
-
-// Rótulos impresos sobre la cara del control.
-export const ROTULOS = Object.freeze([
-  { texto: 'CHASIS', x: -0.125, y: 0.085 },
-  { texto: 'BRAZO Y GARRA', x: 0.110, y: 0.085 },
+  { id: 'SONIDO', tipo: 'unico', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', x: -0.15, y: Y_FILA, r: R_UNI, tono: 'morado' },
+  { id: 'VELOCIDAD', tipo: 'unico', clave: 'VELOCIDAD', etiqueta: 'Velocidad', icono: 'bi-speedometer2', x: -0.105, y: Y_FILA, r: R_UNI, tono: 'morado' },
+  { id: 'DETENER', tipo: 'detener', clave: 'DETENER', etiqueta: 'Detener', icono: 'bi-stop-fill', x: 0, y: Y_FILA, r: 0.026, tono: 'rojo' },
+  { id: 'ENCENDIDO', tipo: 'unico', clave: 'ENCENDIDO', etiqueta: 'Encendido', icono: 'bi-power', x: 0.105, y: Y_FILA, r: R_UNI, tono: 'morado' },
+  { id: 'LUCES', tipo: 'unico', clave: 'LUCES', etiqueta: 'Luces', icono: 'bi-lightbulb-fill', x: 0.15, y: Y_FILA, r: R_UNI, tono: 'morado' },
+  { id: 'RECENTRAR', tipo: 'recentrar', clave: null, etiqueta: 'Recentrar cabina', icono: 'bi-bullseye', x: -0.185, y: 0.055, r: 0.011, tono: 'gris' },
+  { id: 'SALIR', tipo: 'salir', clave: null, etiqueta: 'Salir de VR', icono: 'bi-x-lg', x: 0.185, y: 0.055, r: 0.011, tono: 'gris' },
 ]);
 
 const limitar = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /**
- * Detecta pulsaciones con la punta del dedo. Cada punta llega en coordenadas locales, con z medida
- * desde la cara del control. Un botón solo se pulsa si el dedo llegó desde ARRIBA (evita disparos
- * al atravesar el control por detrás o de lado) y se suelta con histéresis para no rebotar.
+ * Detecta pulsaciones con la punta del dedo. Cada punta llega en coordenadas locales del panel, con z medida
+ * desde la cara. Un botón solo se pulsa si el dedo llegó desde ARRIBA (evita disparos al atravesar el panel
+ * por detrás o de lado) y se suelta con histéresis para no rebotar.
  */
 export class DetectorPulsacion {
   #botones; #cfg;
   #puntas = new Map();   // id de la punta -> { encima: boton|null, pulsado: boton|null }
   #pulsados = new Set(); // botones presionados en el cuadro anterior
 
-  constructor({ botones = BOTONES, profundidad = 0.006, margen = 0.006, alturaEncima = 0.045, histeresis = 0.003 } = {}) {
+  constructor({ botones = BOTONES, profundidad = 0.004, margen = 0.006, alturaEncima = 0.045, histeresis = 0.003 } = {}) {
     this.#botones = botones;
     this.#cfg = { profundidad, margen, alturaEncima, histeresis };
   }
 
-  /** Botón bajo la punta (dentro de su radio + margen) o null. */
-  #botonBajo(x, y, margenExtra = 0) {
+  #botonBajo(x, y) {
     let mejor = null; let dMejor = Infinity;
     for (const b of this.#botones) {
       const d = Math.hypot(x - b.x, y - b.y);
-      if (d < b.r + this.#cfg.margen + margenExtra && d < dMejor) { mejor = b; dMejor = d; }
+      if (d < b.r + this.#cfg.margen && d < dMejor) { mejor = b; dMejor = d; }
     }
     return mejor;
   }
@@ -139,9 +120,60 @@ export class DetectorPinza {
   get cerrada() { return this.#cerrada; }
 }
 
-/** ¿Está un punto local cerca del asa? (segmento horizontal en y = ASA.y). */
-export function cercaDelAsa(x, y, z, tolerancia = 0.04) {
-  const mitad = ASA.largo / 2;
-  const dx = Math.max(0, Math.abs(x) - mitad);
-  return Math.hypot(dx, y - ASA.y, z - CUERPO.grosor / 2) < ASA.radio + tolerancia;
+// ---------- Palancas (joysticks) ----------
+
+export const PALANCA = Object.freeze({
+  largo: 0.17,        // del pivote al centro del puño
+  maxAngulo: 0.45,    // rad (~26°) de inclinación máxima
+  zonaMuerta: 0.14,   // rad (~8°) antes de mandar movimiento
+  histeresis: 0.05,   // rad: para soltar la dirección hay que volver más cerca del centro
+  alcance: 0.07,      // m: distancia de la mano al puño para poder tomarlo
+});
+
+// Dirección de cada palanca -> clave lógica del catálogo (igual que los joysticks de la app).
+export const MAPA_PALANCAS = Object.freeze({
+  izq: Object.freeze({ adelante: 'AVANZAR', atras: 'RETROCEDER', izquierda: 'IZQUIERDA', derecha: 'DERECHA' }),
+  der: Object.freeze({ atras: 'BRAZO_SUBIR', adelante: 'BRAZO_BAJAR', izquierda: 'GARRA_IZQUIERDA', derecha: 'GARRA_DERECHA' }),
+});
+
+/**
+ * Inclinación de la palanca para que el puño apunte hacia la mano.
+ * (dx, dy, dz) = mano − pivote en el sistema de la cabina. rx > 0 inclina hacia atrás (hacia el usuario),
+ * rz > 0 inclina a la izquierda. Ambos se limitan a ±maxAngulo.
+ */
+export function inclinacionDesdeMano(dx, dy, dz, maxAngulo = PALANCA.maxAngulo) {
+  const alto = Math.max(dy, 0.02); // si la mano baja del pivote, se toma como inclinación máxima
+  return {
+    rx: limitar(Math.atan2(dz, alto), -maxAngulo, maxAngulo),
+    rz: limitar(Math.atan2(-dx, alto), -maxAngulo, maxAngulo),
+  };
+}
+
+/** Convierte la inclinación en una dirección (o null) con zona muerta e histéresis; solo un eje a la vez. */
+export class DireccionPalanca {
+  #actual = null;
+  constructor({ zonaMuerta = PALANCA.zonaMuerta, histeresis = PALANCA.histeresis } = {}) {
+    this.zonaMuerta = zonaMuerta; this.histeresis = histeresis;
+  }
+
+  static #componente(dir, rx, rz) {
+    return { adelante: -rx, atras: rx, izquierda: rz, derecha: -rz }[dir];
+  }
+
+  actualizar(rx, rz) {
+    // Se conserva la dirección actual mientras no regrese cerca del centro.
+    if (this.#actual && DireccionPalanca.#componente(this.#actual, rx, rz) > this.zonaMuerta - this.histeresis
+      && Math.max(Math.abs(rx), Math.abs(rz)) === Math.abs(DireccionPalanca.#componente(this.#actual, rx, rz))) {
+      return this.#actual;
+    }
+    let dir = null;
+    if (Math.max(Math.abs(rx), Math.abs(rz)) > this.zonaMuerta) {
+      dir = Math.abs(rx) >= Math.abs(rz) ? (rx < 0 ? 'adelante' : 'atras') : (rz > 0 ? 'izquierda' : 'derecha');
+    }
+    this.#actual = dir;
+    return dir;
+  }
+
+  reiniciar() { this.#actual = null; }
+  get actual() { return this.#actual; }
 }

@@ -187,19 +187,17 @@ export const CONFIG = Object.freeze({
     rangoVisual: 30,        // grados que recorre el punto del indicador
   }),
 
-  // Modo VR (realidad mixta con WebXR): control virtual flotante, el usuario sigue viendo el mundo real.
+  // Modo VR (realidad mixta con WebXR): el usuario queda dentro de una cabina de excavadora virtual y ve el
+  // mundo real por los cristales. Palanca izquierda = chasis, derecha = brazo y garra; panel de botones en el tablero.
   vr: Object.freeze({
     threeUrl: 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js',
     origen: 'WEB_VR',
-    distancia: 0.45,        // m frente a la cabeza al entrar (visor)
-    bajada: 0.22,           // m por debajo de los ojos (queda a la altura del pecho)
-    distanciaCelular: 0.6,  // en celular (AR en pantalla) se coloca más lejos
-    bajadaCelular: 0.08,
     profundidad: 0.004,     // m que hay que hundir un botón (medido desde la piel del dedo) para presionarlo
-    pinzaCierra: 0.02,      // m entre pulgar e índice para tomar el asa
+    pinzaCierra: 0.02,      // m entre pulgar e índice para tomar una palanca
     pinzaAbre: 0.035,       // m para soltarla (histéresis)
-    suavizado: 0.5,         // 0 a 1: qué tan rápido sigue el control a la mano al moverlo
-    depurar: true,          // registra en la consola cada pulsación ([VR] …) para diagnosticar
+    alturaOjos: 1.2,        // m de los ojos al piso si el visor no da el piso real (persona sentada)
+    pluma: true,            // muestra la pluma, el brazo y la cuchara por el parabrisas (se animan con los comandos)
     mostrarManos: true,     // dibuja el esqueleto de las manos (en el Quest se ven las reales; útil en el emulador)
+    depurar: true,          // registra en la consola cada acción ([VR] …) para diagnosticar
   }),
 });
