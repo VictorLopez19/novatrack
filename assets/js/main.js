@@ -72,7 +72,32 @@ const msg = (texto, tipo = 'info') => store.set('mensaje', {
 });
 
 // Inicializa los créditos, mensajes e indicadores de conexión.
-$('pie-creditos').textContent = `Desarrollado por ${CONFIG.creditos.alumno} · ${CONFIG.creditos.anio}`;
+// El pie se arma con nodos del DOM (sin innerHTML): nombre, año y perfiles del autor.
+{
+  const pie = $('pie-creditos');
+  pie.append(`Desarrollado por ${CONFIG.creditos.alumno} · ${CONFIG.creditos.anio}`);
+
+  for (const red of CONFIG.creditos.redes) {
+    const enlace = document.createElement('a');
+    enlace.className = 'pie-enlace';
+    enlace.href = red.url;
+    enlace.target = '_blank';
+    enlace.rel = 'noopener noreferrer'; // evita que la pestaña nueva acceda a esta página
+    enlace.setAttribute('aria-label', `Perfil de ${red.nombre} del autor (se abre en una pestaña nueva)`);
+
+    const icono = document.createElement('i');
+    icono.className = `bi ${red.icono}`;
+    icono.setAttribute('aria-hidden', 'true');
+
+    // El nombre va en su propio span: en el celular en vertical se oculta y queda solo el icono.
+    const nombre = document.createElement('span');
+    nombre.className = 'pie-red-nombre';
+    nombre.textContent = red.nombre;
+
+    enlace.append(icono, nombre);
+    pie.append(enlace);
+  }
+}
 
 iniciarMensajes(store, $('mensajes'), CONFIG.tiempos.mensajeMs);
 

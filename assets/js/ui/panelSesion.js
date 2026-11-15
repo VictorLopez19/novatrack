@@ -43,9 +43,12 @@ export function iniciarPanelSesion(store, ids) {
         aviso.dataset.nivel = nivel;
         $(ids.avisoPin).textContent = pin;
         $(ids.avisoTitulo).textContent = s.estado === 'activa' ? 'Esperando autorización' : texto;
-        $(ids.avisoTexto).textContent = s.estado === 'activa'
-            ? 'Comparte el PIN con el administrador para controlar el vehículo.'
-            : nota;
+
+        // Con la sesión activa basta el título y el PIN; la nota solo se muestra si hay algo que explicar
+        // (la sesión se está creando, la API no responde o el administrador cerró la sesión).
+        const avisoTexto = $(ids.avisoTexto);
+        avisoTexto.textContent = s.estado === 'activa' ? '' : nota;
+        avisoTexto.hidden = !avisoTexto.textContent;
 
         // Encabezado: PIN visible junto al estado de conexión
         const cab = $(ids.cabPin);

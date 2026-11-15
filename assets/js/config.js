@@ -15,10 +15,24 @@ export const CONFIG = Object.freeze({
   // Identificador del vehículo seleccionado por defecto.
   vehiculoPorDefecto: 1,
 
-  // Créditos y año de identificación del proyecto.
+  // Créditos y año de identificación del proyecto, con los perfiles del autor.
   creditos: Object.freeze({
     alumno: 'López Cruz Victor Manuel',
-    anio: 2026
+    anio: 2026,
+
+    // Enlaces del pie de página. La «ó» del perfil de LinkedIn va codificada (%C3%B3).
+    redes: Object.freeze([
+      Object.freeze({
+        nombre: 'LinkedIn',
+        icono: 'bi-linkedin',
+        url: 'https://www.linkedin.com/in/victor-manuel-l%C3%B3pez-cruz-34bb39349',
+      }),
+      Object.freeze({
+        nombre: 'GitHub',
+        icono: 'bi-github',
+        url: 'https://github.com/VictorLopez19',
+      }),
+    ]),
   }),
 
   // Tiempos de espera e intervalos utilizados por los servicios.
