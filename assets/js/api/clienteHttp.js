@@ -19,8 +19,8 @@ export class ErrorApi extends Error {
  */
 const MENSAJES = {
     400: 'La solicitud no es válida',
-    401: 'Falta la API Key (revisa apiKey en config.js).',
-    403: 'La API Key no es válida (revisa apiKey en config.js).',
+    401: 'No hay una sesión de control activa; recarga la página.',
+    403: 'El administrador aún no autoriza esta sesión.',
     404: 'El recurso no existe',
     409: 'La operación no es posible en el estado actual',
     422: 'Los datos enviados no son válidos',
@@ -36,13 +36,13 @@ const MENSAJES = {
  * respuestas JSON y tratamiento de errores.
  */
 export class ClienteHttp {
-    #base; #timeoutMs; #obtenerClave; #obtenerSesion; #alRespuesta;
+    #base; #timeoutMs; #obtenerSesion; #alRespuesta;
 
     /**
      * Inicializa el cliente HTTP con la configuración del servidor,
      * el tiempo de espera y las funciones auxiliares.
      */
-    constructor({ baseUrl, timeoutMs, obtenerClave = () => '', obtenerSesion = () => '', alRespuesta = () => { } }) {
+    constructor({ baseUrl, timeoutMs, obtenerSesion = () => '', alRespuesta = () => { } }) {
         const base = String(baseUrl).replace(/\/+$/, '');
 
         // Evita conexiones HTTP inseguras cuando la aplicación utiliza HTTPS.
@@ -52,7 +52,6 @@ export class ClienteHttp {
 
         this.#base = base;
         this.#timeoutMs = timeoutMs;
-        this.#obtenerClave = obtenerClave;
         this.#obtenerSesion = obtenerSesion;
         this.#alRespuesta = alRespuesta;
     }
@@ -76,11 +75,9 @@ export class ClienteHttp {
 
         if (cuerpo !== undefined) headers['Content-Type'] = 'application/json';
 
+        // Sesión de control: el backend solo acepta movimientos de sesiones autorizadas por el administrador.
+        // Ya no se envía ninguna API Key: la clave de la API no sale del servidor.
         if (protegido) {
-            const clave = this.#obtenerClave();
-            if (clave) headers['X-API-Key'] = clave;
-
-            // Sesión de control: el backend solo acepta movimientos de sesiones autorizadas por el administrador.
             const sesion = this.#obtenerSesion();
             if (sesion) headers['X-Sesion-Token'] = sesion;
         }
@@ -140,8 +137,8 @@ export class ClienteHttp {
                 const d = json?.detalle ?? json?.detail;
                 const detalle = typeof d === 'string' ? d.slice(0, 160) : '';
                 const generico = MENSAJES[resp.status] ?? `Error HTTP ${resp.status}.`;
-                // En 401/403 el detalle solo se muestra si se refiere a la sesión o al administrador
-                // (los de la API Key se sustituyen por un mensaje genérico).
+                // En 401/403 el detalle solo se muestra si se refiere a la sesión o al administrador;
+                // cualquier otro detalle se sustituye por un mensaje genérico.
                 const deSesion = /sesi[oó]n|administrador|contrase/i.test(detalle);
                 const usarDetalle = detalle && ((resp.status !== 401 && resp.status !== 403) || deSesion);
 

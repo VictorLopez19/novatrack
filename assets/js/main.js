@@ -126,9 +126,12 @@ try {
   const http = new ClienteHttp({
     baseUrl: CONFIG.apiBaseUrl,
     timeoutMs: CONFIG.tiempos.httpMs,
-    obtenerClave: () => CONFIG.apiKey,
     obtenerSesion: () => sesion?.token ?? '',
-    alRespuesta: (s, r) => conectividad?.alRespuestaHttp(s, r),
+    alRespuesta: (s, r) => {
+      conectividad?.alRespuestaHttp(s, r);
+      // Un 401 en una ruta de control significa que el servidor ya no conoce esta sesión.
+      sesion?.renovarSiExpiro(s, r);
+    },
   });
 
   api = new VehiculoApi(http, CONFIG.endpoints, CONFIG.tiempos);
@@ -158,6 +161,8 @@ try {
     api: new AdminApi(http, CONFIG.endpoints),
     msg: (texto, tipo) => msg(texto, tipo),
     claveAlmacen: CONFIG.sesion.claveAdmin,
+    // La pestaña del administrador se autoriza sola al iniciar sesión.
+    pinPropio: () => sesion?.pin ?? null,
     crearWs: (alAbrir) => new ServicioWebSocket({
       urlPara: () => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.wsAdmin}`,
       tiempos: CONFIG.tiempos,
@@ -273,6 +278,10 @@ let teniaPermiso = false;
 store.on('sesion', (s) => {
   document.documentElement.classList.toggle('sin-permiso', !s.autorizada);
 
+  // Si esta pestaña ya entró como administrador, su propia sesión se autoriza sola
+  // (también cuando expira y se genera un PIN nuevo).
+  if (s.estado === 'activa' && !s.autorizada) admin?.autorizarPropia();
+
   // Al perder el permiso nada debe seguir enviando comandos (el servidor ya detiene el vehículo).
   if (teniaPermiso && !s.autorizada) {
     const m = store.get('modo');
@@ -289,15 +298,18 @@ store.on('sesion', (s) => {
 });
 
 document.documentElement.classList.add('sin-permiso');
-iniciarPanelSesion(store, {
+const panelSesion = iniciarPanelSesion(store, {
   pin: 'info-pin',
   chip: 'chip-sesion',
   nota: 'info-sesion-nota',
-  aviso: 'aviso-permiso',
-  avisoPin: 'aviso-permiso-pin',
-  avisoTitulo: 'aviso-permiso-titulo',
-  avisoTexto: 'aviso-permiso-texto',
   cabPin: 'cab-pin',
+  dialogo: 'dlg-permiso',
+  cerrar: 'btn-permiso-cerrar',
+  copiar: 'permiso-copiar',
+  modalIcono: 'permiso-icono',
+  modalTitulo: 'permiso-titulo',
+  modalPin: 'permiso-pin',
+  modalTexto: 'permiso-texto',
 });
 actualizarJoysticks();
 
@@ -619,7 +631,11 @@ async function iniciar() {
 
   store.set('vehiculoId', id);
 
-  mostrarSplash($('splash')).then(avisarSiNoResponde);
+  // El aviso del PIN espera a que termine la pantalla de entrada para no taparla.
+  mostrarSplash($('splash')).then(() => {
+    panelSesion.mostrarAviso();
+    avisarSiNoResponde();
+  });
 
   cargarVehiculos();
   cargarVehiculo(id);

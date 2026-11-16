@@ -55,7 +55,8 @@ Diseñar, desarrollar, integrar y publicar una aplicación web responsiva que pe
 - Reconexión automática ante interrupciones de comunicación.
 - Indicadores del estado de conexión.
 - Selección del vehículo desde Ajustes.
-- API Key definida en `config.js`.
+- Sesión de control con PIN de 5 dígitos que el administrador autoriza.
+- Vista de administración para gestionar las sesiones conectadas.
 - Mensajes de confirmación, advertencia y error.
 - Botón de detención de emergencia.
 - Compatibilidad con pantallas táctiles y controles mediante teclado.
@@ -284,14 +285,24 @@ El apartado de información presenta el estado de la conexión WebSocket, la dis
 La disponibilidad de la API se comprueba periódicamente y también cuando se recupera la conexión de red o se vuelve a la pestaña. La información de la base de datos se considera sin verificar cuando no existe un endpoint específico para comprobarla.
 </p>
 
-<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10. Clave de acceso y seguridad</div>
+<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10. Sesión de control y seguridad</div>
 
 <p align="justify">
-La clave de acceso se define en `CONFIG.apiKey` (`assets/js/config.js`) y se envía mediante el encabezado HTTP X-API-Key en las operaciones protegidas. Al estar en el código, cualquiera que abra el sitio publicado puede verla; es un riesgo asumido de forma consciente.
+La aplicación ya no contiene ninguna clave: <code>config.js</code> no guarda secretos y la API Key no sale del servidor. Cada carga de la página abre una sesión propia en <code>POST /sesiones</code> y recibe un token secreto junto con un PIN de 5 dígitos. El token viaja en el encabezado <code>X-Sesion-Token</code> de las operaciones de control; el PIN es el dato que el usuario comparte con el administrador para que autorice su sesión.
 </p>
 
 <p align="justify">
-Las consultas de información que no requieren autenticación se realizan sin enviar la clave. Las operaciones protegidas, como el envío de movimientos y el control de DEMO, utilizan el encabezado correspondiente.
+Mientras la sesión no tenga permiso, la interfaz la bloquea localmente: los joysticks quedan deshabilitados, los modos de voz, gestos, giroscopio y VR no envían comandos y el aviso de CONTROL muestra el PIN. Las consultas de información siguen siendo públicas y se realizan sin credenciales.
+</p>
+
+<p align="justify">
+Un WebSocket propio, <code>/ws/sesiones/{token}</code>, mantiene viva la sesión y entrega los cambios de permiso en el momento. Si el administrador revoca el permiso, la interfaz apaga de inmediato los modos activos; si cierra la sesión, la página se recarga y obtiene un PIN nuevo. Al salir de la página, la sesión se destruye con <code>navigator.sendBeacon</code>.
+</p>
+
+<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10.1. Vista de administración</div>
+
+<p align="justify">
+La vista ADMINISTRACIÓN pide el usuario y la contraseña, que solo se validan en el servidor, y guarda el token resultante en <code>sessionStorage</code>: dura lo que la pestaña y no se comparte. Desde ahí se autorizan o revocan las sesiones una por una o todas a la vez, se cierran, se activa la autorización automática y se ejecuta la parada de emergencia. El WebSocket <code>/ws/admin</code> —que recibe el token como primer mensaje, nunca en la URL— mantiene la lista al día sin recargar.
 </p>
 
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">11. Mensajes de la interfaz</div>
@@ -328,7 +339,40 @@ La aplicación consume los siguientes endpoints del backend desarrollado con Fas
 | POST | `/vehiculos/{id}/movimientos` | Envía un comando de movimiento. |
 | POST | `/control-demo/{id_demo}/iniciar?id_vehiculo={id}` | Inicia una DEMO. |
 | POST | `/control-demo/cancelar?id_vehiculo={id}` | Cancela una DEMO. |
+| POST | `/vehiculos/{id}/ia/ejecutar` | Ejecuta una orden interpretada por IA. |
+| GET | `/vehiculos/{id}/estado` | Último estado registrado (monitoreo). |
+| GET | `/vehiculos/{id}/historial` | Últimos movimientos (monitoreo). |
 | WSS | `/ws/vehiculos/{id}` | Recibe eventos del vehículo en tiempo real. |
+
+<p align="justify">
+Las operaciones de control —movimientos, DEMO e IA— envían el encabezado <code>X-Sesion-Token</code>. Las consultas GET son públicas.
+</p>
+
+<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">Sesión de control</div>
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| POST | `/sesiones` | Abre la sesión de esta pestaña y devuelve su token y su PIN. |
+| POST | `/sesiones/{token}/cerrar` | Destruye la sesión al salir de la página (`sendBeacon`). |
+| WSS | `/ws/sesiones/{token}` | Mantiene viva la sesión y recibe los cambios de permiso. |
+
+<div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">Administración</div>
+
+<p align="justify">
+Todas estas operaciones envían el encabezado <code>Authorization: Bearer &lt;token&gt;</code>, salvo el inicio de sesión.
+</p>
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| POST | `/admin/login` | Valida el usuario y la contraseña; devuelve el token. |
+| POST | `/admin/logout` | Invalida el token actual. |
+| GET | `/admin/sesiones` | Sesiones activas, bitácora y configuración. |
+| POST | `/admin/sesiones/{pin}/permiso` | Autoriza o revoca una sesión. |
+| POST | `/admin/sesiones/permiso` | Autoriza o revoca todas las sesiones. |
+| POST | `/admin/sesiones/{pin}/cerrar` | Expulsa una sesión. |
+| POST | `/admin/configuracion` | Activa o desactiva la autorización automática. |
+| POST | `/admin/vehiculos/{id}/detener` | Parada de emergencia. |
+| WSS | `/ws/admin` | Recibe el estado de las sesiones en tiempo real. |
 
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">Envío de movimientos</div>
 
@@ -366,6 +410,13 @@ La aplicación procesa los eventos recibidos desde el backend para actualizar el
 - `demo_cancelada`
 - `demo_error`
 - `pong`
+
+<p align="justify">
+Los WebSocket de la sesión y del panel entregan además sus propios eventos:
+</p>
+
+- `sesion_estado`, `sesion_permiso`, `sesion_cerrada`, `sesion_invalida`
+- `admin_estado`, `admin_expirado`
 
 <div style="font-size: 1.5em; font-weight: bold; margin-top: 30px;">Configuración</div>
 
@@ -412,10 +463,14 @@ app.add_middleware(
         "https://victorlopez19.github.io"
     ],
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["X-API-Key", "Content-Type"],
+    allow_headers=["X-Sesion-Token", "Authorization", "X-API-Key", "Content-Type"],
     allow_credentials=False
 )
 ```
+
+<p align="justify">
+<b>Importante:</b> si la lista de encabezados permitidos no incluye <code>X-Sesion-Token</code> y <code>Authorization</code>, el navegador bloquea en el preflight todas las operaciones de control y las del panel de administración. Usar <code>allow_headers=["*"]</code> también es válido.
+</p>
 
 <p align="justify">
 Para realizar pruebas desde un servidor local, también se debe agregar el origen correspondiente. Por ejemplo, si se utiliza Live Server:
@@ -429,7 +484,7 @@ allow_origins=[
 ```
 
 <p align="justify">
-CORS permite controlar los orígenes autorizados para realizar solicitudes desde el navegador, pero no sustituye la autenticación. La protección de las operaciones se realiza mediante la clave X-API-Key.
+CORS permite controlar los orígenes autorizados para realizar solicitudes desde el navegador, pero no sustituye la autenticación. La protección de las operaciones de control se realiza mediante la sesión con PIN (<code>X-Sesion-Token</code>) que el administrador autoriza, y la del panel mediante su token <code>Authorization: Bearer</code>.
 </p>
 
 <div style="font-size: 1.5em; font-weight: bold; margin-top: 30px;">Ejecución local</div>

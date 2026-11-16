@@ -1,4 +1,4 @@
-// Ajustes: selección del vehículo (tarjetas). La API Key se define en config.js.
+// Ajustes: selección del vehículo (tarjetas). Las direcciones y tiempos se definen en config.js.
 // Guardar, Restablecer y Cerrar validan, informan en el chat y cierran el modal.
 
 export class Ajustes {

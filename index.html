@@ -64,7 +64,8 @@
                 <span class="conexion-val">
                     <span id="ws-punto" class="punto punto-err" aria-hidden="true"></span>
                     <strong id="ws-texto">Desconectado</strong>
-                    <span id="cab-pin" class="cab-pin" data-nivel="warn">PIN …</span>
+                    <button id="cab-pin" class="cab-pin" type="button" data-nivel="warn"
+                        aria-haspopup="dialog" aria-label="Estado de la sesión de control">PIN …</button>
                 </span>
             </div>
 
@@ -128,15 +129,6 @@
                 <p id="vehiculo-estado-texto" class="vehiculo-texto">
                     Vehículo físico sin confirmar
                 </p>
-
-                <!-- Aviso visible mientras el administrador no autorice esta sesión. -->
-                <div id="aviso-permiso" class="aviso-permiso" role="status" aria-live="polite" data-nivel="warn">
-                    <div class="aviso-permiso-txt">
-                        <strong id="aviso-permiso-titulo">Creando sesión…</strong>
-                        <span id="aviso-permiso-texto">Generando el PIN de esta sesión.</span>
-                    </div>
-                    <span class="aviso-permiso-pin" aria-label="PIN de la sesión"><small>PIN</small><b id="aviso-permiso-pin">·····</b></span>
-                </div>
 
                 <div id="botonera" class="botonera"></div>
 
@@ -658,6 +650,45 @@
             <button id="btn-cerrar-info" class="btn-d" type="button">
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                 Cerrar
+            </button>
+        </div>
+
+    </dialog>
+
+    <!-- Permiso de la sesión. Se puede cerrar para ver el control completo; el PIN
+         queda en el encabezado y vuelve a abrir este aviso al pulsarlo. -->
+    <dialog id="dlg-permiso" class="dialogo dlg-permiso" aria-labelledby="t-permiso">
+
+        <h2 id="t-permiso">
+            <strong id="permiso-titulo">Esperando autorización</strong>
+        </h2>
+
+        <div class="permiso-pin">
+            <span class="permiso-pin-et">PIN de esta sesión</span>
+            <strong id="permiso-pin" class="permiso-pin-num">*****</strong>
+            <button id="permiso-copiar" class="permiso-copiar" type="button">
+                <i class="bi bi-clipboard" aria-hidden="true"></i>
+                <span>Copiar</span>
+            </button>
+        </div>
+
+        <p id="permiso-texto" class="permiso-texto">
+            Comparte este PIN con el administrador para que autorice el control.
+        </p>
+
+        <ol class="permiso-pasos">
+            <li>Comparte tu PIN con el administrador.</li>
+            <li>Él lo autoriza desde la vista <b>Administración</b>.</li>
+            <li>Los mandos se activan aquí mismo, sin recargar la página.</li>
+        </ol>
+
+        <p class="nota-info">
+            Puedes cerrar este aviso para ver el control; se abrirá de nuevo si cambia el permiso.
+        </p>
+
+        <div class="dialogo-acciones">
+            <button id="btn-permiso-cerrar" class="btn-d btn-d-primario" type="button">
+                Entendido
             </button>
         </div>
 

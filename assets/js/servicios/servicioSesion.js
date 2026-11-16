@@ -48,6 +48,19 @@ export class ServicioSesion {
         return 'No hay una sesión de control activa todavía. Espera un momento.';
     }
 
+    /**
+     * Reacciona a un 401 del servidor en una ruta de control: si esta sesión ya no existe
+     * allá (por ejemplo, la API se reinició), crea otra sin esperar a que el WSS lo note.
+     * El panel de administración y la creación de sesiones quedan fuera: tienen su propio ciclo.
+     */
+    renovarSiExpiro(status, ruta = '') {
+        if (status !== 401 || !this.#token || this.#saliendo) return;
+        if (ruta.startsWith('/admin') || ruta.startsWith('/sesiones')) return;
+
+        this.#msg('Tu sesión expiró: se generó un PIN nuevo que el administrador debe autorizar.', 'warn');
+        this.#crear();
+    }
+
     iniciar() {
         // Salir de la página (cerrar, recargar o navegar) destruye la sesión en el servidor.
         window.addEventListener('pagehide', () => this.#alSalir());

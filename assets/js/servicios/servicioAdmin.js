@@ -26,19 +26,22 @@ export class ServicioAdmin {
         ocupado: false,   // hay una acción en curso
     });
 
-    #api; #ws; #msg; #clave;
+    #api; #ws; #msg; #clave; #pinPropio;
     #token = null;
     #vence = 0;
     #activa = false;
+    #autorizado = '';   // PIN de esta pestaña ya autorizado automáticamente
 
     /**
-     * @param api      AdminApi
-     * @param crearWs  (alAbrir) => ServicioWebSocket hacia /ws/admin
+     * @param api        AdminApi
+     * @param crearWs    (alAbrir) => ServicioWebSocket hacia /ws/admin
+     * @param pinPropio  () => PIN de la sesión de control de esta pestaña (o null)
      */
-    constructor({ api, crearWs, msg, claveAlmacen }) {
+    constructor({ api, crearWs, msg, claveAlmacen, pinPropio = () => null }) {
         this.#api = api;
         this.#msg = msg;
         this.#clave = claveAlmacen;
+        this.#pinPropio = pinPropio;
         this.#ws = crearWs((ws) => ws.send(JSON.stringify({ token: this.#token })));
 
         this.#ws.emisor.on('estado', ({ estado }) => this.estado.set('ws', estado));
@@ -73,6 +76,31 @@ export class ServicioAdmin {
         this.estado.set('autenticado', true);
 
         if (this.#activa) this.#conectar();
+
+        // Quien administra no debería pedirse permiso a sí mismo.
+        await this.autorizarPropia();
+    }
+
+    /**
+     * Autoriza la sesión de control de esta misma pestaña, porque su dueño acaba de
+     * demostrar que es el administrador. Se vuelve a intentar si cambia el PIN
+     * (por ejemplo, tras expirar la sesión y generarse otra).
+     */
+    async autorizarPropia() {
+        const pin = this.#pinPropio();
+
+        if (!this.#token || !pin || this.#autorizado === pin) return false;
+        this.#autorizado = pin;
+
+        try {
+            this.#aplicar(await this.#api.permiso(this.#token, pin, true), true);
+            this.#msg(`Tu sesión (PIN ${pin}) quedó autorizada por ser la del administrador.`, 'ok');
+            return true;
+        } catch (e) {
+            this.#autorizado = '';  // se reintenta en el siguiente cambio de sesión
+            if (e.status === 401) this.#limpiar('Tu sesión de administrador venció. Inicia sesión de nuevo.');
+            return false;
+        }
     }
 
     async logout() {
@@ -175,6 +203,7 @@ export class ServicioAdmin {
     #limpiar(aviso = '') {
         this.#token = null;
         this.#vence = 0;
+        this.#autorizado = '';
         almacen.borrar(this.#clave);
         this.#ws.desconectar();
 
