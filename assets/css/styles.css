@@ -178,6 +178,18 @@ body::before { /* cuadrícula de fondo */
 .btn-ctl:hover:not(:disabled) { box-shadow: 0 0 20px rgba(140, 192, 255, .7); }
 .btn-ctl:active:not(:disabled) { transform: scale(.92); }
 .btn-ctl[data-estado="enviando"] { animation: pulso .8s infinite; }
+/* Pulsación mantenida (encendido → apagar): el aro se llena mientras se espera. */
+.btn-ctl[data-manteniendo] {
+  border-color: var(--warn);
+  background-image: conic-gradient(var(--warn) 0turn, transparent 0turn);
+  animation: llenar-aro var(--largo, .65s) linear forwards;
+}
+@keyframes llenar-aro {
+  to { background-image: conic-gradient(var(--warn) 1turn, transparent 1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-ctl[data-manteniendo] { animation: none; background-image: none; }
+}
 .btn-ctl[data-estado="aceptado"] { border-color: var(--ok); box-shadow: 0 0 18px rgba(62, 229, 138, .8); }
 .btn-ctl[data-estado="error"] { border-color: var(--err); box-shadow: 0 0 18px rgba(255, 107, 122, .8); }
 .btn-ctl:disabled { opacity: .45; border-style: dashed; cursor: not-allowed; box-shadow: none; }

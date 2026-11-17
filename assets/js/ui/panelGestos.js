@@ -11,7 +11,8 @@ const ETIQUETAS = {
   GARRA_IZQUIERDA: ['bi-arrow-left-circle-fill', 'Garra izquierda'],
   GARRA_DERECHA: ['bi-arrow-right-circle-fill', 'Garra derecha'],
 
-  ENCENDIDO: ['bi-power', 'Encendido'],
+  ENCENDER: ['bi-power', 'Encender'],
+  APAGAR: ['bi-power', 'Apagar'],
   VELOCIDAD: ['bi-speedometer', 'Velocidad'],
   SONIDO: ['bi-volume-up-fill', 'Sonido'],
   LUCES: ['bi-lightbulb-fill', 'Luces'],

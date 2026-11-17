@@ -17,10 +17,13 @@ export class Botonera {
   #vrOk;
   #btns = new Map();
 
+  #largoMs;
+
   // Inicializa la botonera, registra eventos y actualiza su estado.
-  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk, alGiro, giroOk, alVr, vrOk = () => false }) {
+  constructor(contenedor, { botones, servicio, store, emisor, alDemo, alVoz, vozOk, alGestos, gestosOk, alGiro, giroOk, alVr, vrOk = () => false, largoMs = 650 }) {
     this.#cont = contenedor;
     this.#cfg = botones;
+    this.#largoMs = largoMs;
     this.#servicio = servicio;
     this.#store = store;
     this.#alDemo = alDemo;
@@ -79,6 +82,13 @@ export class Botonera {
       item.append(btn, et);
       filas.get(b.fila).append(item);
 
+      // Botones con dos órdenes: un toque envía `clave` y mantenerlo pulsado envía `claveLarga`.
+      if (b.claveLarga) {
+        this.#conPulsacionLarga(b, btn);
+        this.#btns.set(b, btn);
+        continue;
+      }
+
       // Ejecuta la acción correspondiente al tipo de botón.
       btn.addEventListener('click', () => {
 
@@ -104,6 +114,66 @@ export class Botonera {
 
       this.#btns.set(b, btn);
     }
+  }
+
+  /**
+   * Un toque envía `clave` (encender) y mantener pulsado envía `claveLarga` (apagar).
+   * Funciona con dedo, ratón y teclado: al mantener Enter o Espacio el navegador
+   * repite el evento `keydown`, y esa repetición se interpreta como pulsación larga.
+   */
+  #conPulsacionLarga(b, btn) {
+    let temporizador = null;
+    let largaEnviada = false;
+
+    // La animación del aro dura lo mismo que la espera real.
+    btn.style.setProperty('--largo', `${this.#largoMs}ms`);
+
+    // Las dos órdenes comparten dueño: es un único control físico, no dos.
+    const enviar = (clave) => this.#servicio.enviar(clave, `btn:${b.clave}`, 'WEB_BOTON');
+
+    const iniciar = () => {
+      if (temporizador !== null || btn.disabled) return;
+
+      largaEnviada = false;
+      btn.dataset.manteniendo = '1';
+
+      temporizador = setTimeout(() => {
+        temporizador = null;
+        largaEnviada = true;
+        delete btn.dataset.manteniendo;
+        enviar(b.claveLarga);
+      }, this.#largoMs);
+    };
+
+    // Al soltar antes de tiempo se envía la orden corta; si ya salió la larga, no se repite.
+    const terminar = (enviarCorta = true) => {
+      if (temporizador !== null) {
+        clearTimeout(temporizador);
+        temporizador = null;
+        delete btn.dataset.manteniendo;
+        if (enviarCorta && !largaEnviada) enviar(b.clave);
+        return;
+      }
+      delete btn.dataset.manteniendo;
+    };
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();  // evita el click sintético y la selección de texto
+      iniciar();
+    });
+    btn.addEventListener('pointerup', () => terminar());
+    btn.addEventListener('pointerleave', () => terminar(false));   // el dedo salió del botón: se cancela
+    btn.addEventListener('pointercancel', () => terminar(false));
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();  // sin esto el navegador generaría un click
+      iniciar();           // las repeticiones no reinician nada: el temporizador ya corre
+    });
+    btn.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') terminar();
+    });
+    btn.addEventListener('blur', () => terminar(false));
   }
 
   // Habilita o deshabilita los botones según el estado del vehículo y la DEMO.
@@ -149,14 +219,17 @@ export class Botonera {
       }
 
       btn.disabled = !ok;
-      btn.title = motivo || b.etiqueta;
+      btn.title = motivo || b.ayuda || b.etiqueta;
+      // Los botones con dos órdenes explican el toque y la pulsación larga.
+      if (ok && b.ayuda) btn.setAttribute('aria-label', `${b.etiqueta}. ${b.ayuda}`);
     }
   }
 
   // Actualiza el estado visual del botón según el evento recibido.
   #marcar(clave, estado) {
     for (const [b, btn] of this.#btns) {
-      if (b.clave !== clave) continue;
+      // El botón de encendido también refleja el estado de su orden larga (apagar).
+      if (b.clave !== clave && b.claveLarga !== clave) continue;
 
       btn.dataset.estado = estado;
       btn.setAttribute('aria-busy', String(estado === 'enviando'));

@@ -340,6 +340,7 @@ const botonera = new Botonera($('botonera'), {
   giroOk: giroscopioSoportado,
   alVr: () => vr.activar(),
   vrOk: () => vr.soportado,
+  largoMs: CONFIG.tiempos.largoMs,
 });
 
 // El soporte de realidad mixta se conoce de forma asíncrona: al saberlo se actualiza el botón VR.

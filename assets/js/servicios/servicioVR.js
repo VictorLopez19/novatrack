@@ -38,6 +38,7 @@ export class ServicioVR {
   #rechazada = { izq: false, der: false };  // el último envío de esa palanca fue rechazado
   #bloqueo = { izq: false, der: false };    // tras DETENER hay que regresar la palanca al centro
   #mensaje = ''; #tDisponible = 0; #tPrevio = 0; #aviso = ''; #avisoHasta = 0;
+  #largas = new Map();                      // botón mantenido -> temporizador de su orden larga
 
   constructor({ store, comandos, emisor, config }) {
     this.#store = store; this.#comandos = comandos; this.#cfg = config;
@@ -51,7 +52,9 @@ export class ServicioVR {
       if (b && this.#panel) this.#panel.marcar(b.id, estado, performance.now());
       if (this.#activo && estado === 'aceptado') {
         if (clave === 'LUCES') this.#cabina?.alternarLuces();
-        if (clave === 'ENCENDIDO') this.#cabina?.alternarEncendido();
+        // Encender y apagar fijan el estado de la cabina, ya no lo alternan.
+        if (clave === 'ENCENDER') this.#cabina?.fijarEncendido(true);
+        if (clave === 'APAGAR') this.#cabina?.fijarEncendido(false);
       }
     });
     store.on('mensaje', (m) => { this.#mensaje = m?.texto ?? ''; });
@@ -210,6 +213,9 @@ export class ServicioVR {
   #soltarTodo() {
     this.#detector.reiniciar();
     this.#rayoPulsado = [null, null];
+    // Pulsaciones mantenidas a medias: se descartan sin enviar nada.
+    for (const t of this.#largas.values()) clearTimeout(t);
+    this.#largas.clear();
     for (const lado of LADOS) this.#soltarPalanca(lado);
     this.#bloqueo = { izq: false, der: false };
   }
@@ -305,12 +311,43 @@ export class ServicioVR {
     for (const lado of LADOS) {
       if (this.#claves[lado]) { this.#comandos.soltar(`vr:${lado}`); this.#claves[lado] = null; this.#bloqueo[lado] = Boolean(this.#agarres[lado]); }
     }
-    const ok = this.#comandos.enviar(b.clave, 'btn:vr', this.#cfg.origen);
-    this.#depurar('pulsar', b.id, ok ? 'enviado' : `rechazado: ${this.#mensaje}`);
+
+    // Botón con dos órdenes (encender / apagar): se decide al soltarlo o al cumplirse el tiempo.
+    if (b.claveLarga) { this.#iniciarLarga(b); return; }
+
+    this.#enviarBoton(b, b.clave);
+  }
+
+  #enviarBoton(b, clave) {
+    const ok = this.#comandos.enviar(clave, 'btn:vr', this.#cfg.origen);
+    this.#depurar('pulsar', b.id, clave, ok ? 'enviado' : `rechazado: ${this.#mensaje}`);
     if (!ok) this.#avisar(this.#mensaje || 'No se pudo enviar el comando.');
   }
 
-  #soltarBoton(b) { this.#depurar('soltar', b.id); }
+  /** Arranca la cuenta de la pulsación mantenida: al cumplirse envía la orden larga (apagar). */
+  #iniciarLarga(b) {
+    if (this.#largas.has(b.id)) return;
+
+    this.#avisar(`${b.etiqueta}: mantén para apagar`);
+    this.#largas.set(b.id, setTimeout(() => {
+      this.#largas.delete(b.id);
+      if (!this.#activo) return;
+      this.#enviarBoton(b, b.claveLarga);
+    }, this.#cfg.largoMs ?? 650));
+  }
+
+  // Soltar antes de tiempo envía la orden corta (encender); si ya salió la larga, no se repite.
+  #soltarBoton(b) {
+    this.#depurar('soltar', b.id);
+    if (!b.claveLarga) return;
+
+    const t = this.#largas.get(b.id);
+    if (t === undefined) return;  // la orden larga ya se envió
+
+    clearTimeout(t);
+    this.#largas.delete(b.id);
+    this.#enviarBoton(b, b.clave);
+  }
 
   // ---------- Rayo (mandos y pantalla táctil) ----------
   #rayoDesde(i) {

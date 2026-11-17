@@ -216,6 +216,14 @@ La botonera permite ejecutar comandos individuales mediante botones táctiles. C
 Los botones presentan diferentes estados visuales para indicar si un comando está disponible, presionado, enviándose, aceptado, presenta un error o se encuentra deshabilitado.
 </p>
 
+<p align="justify">
+<b>Botón de encendido.</b> Es el único con dos órdenes: un toque envía <code>ENCENDER</code> y mantenerlo pulsado unos instantes envía <code>APAGAR</code>. Mientras se mantiene, un aro se va llenando alrededor del botón para avisar que la orden cambiará; si se suelta antes o se saca el dedo, no se envía nada. También funciona con el teclado: Enter o Espacio enciende, y mantener la tecla apaga. El tiempo de la pulsación larga se ajusta en <code>CONFIG.tiempos.largoMs</code>, y el comando alterno se declara con <code>claveLarga</code> en <code>CONFIG.botones</code>.
+</p>
+
+<p align="justify">
+Los demás modos siguen la misma idea: en <b>voz</b> se dice «enciende» o «apaga» (y «enciende las luces» sigue siendo de las luces); en <b>gestos</b>, los cuernitos encienden y mantener el gesto apaga; en <b>VR</b>, el botón de encendido del tablero se toca para encender y se mantiene hundido para apagar.
+</p>
+
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">5. Gestión de comandos</div>
 
 <p align="justify">

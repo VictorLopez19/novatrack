@@ -80,6 +80,7 @@ export function clasificarMano(m, cfg) {
 /** Estabiliza las lecturas: exige varias seguidas, detiene si se pierde la mano y pide «armar» antes de mover. */
 export class FiltroGestos {
   #cfg; #cand = null; #n = 0; #actual = null; #armado; #visto = -Infinity;
+  #sostenidoEnviado = false;  // ya se disparó la acción alterna del gesto que sigue mantenido
 
   constructor(cfg) { this.#cfg = cfg; this.#armado = !cfg.requiereArmado; }
   get armado() { return this.#armado; }
@@ -98,7 +99,18 @@ export class FiltroGestos {
     const necesarios = efectiva === 'DETENER' ? this.#cfg.framesParada
       : this.#cfg.unicos.includes(efectiva) ? this.#cfg.framesUnico // luces, sonido…: más tiempo para evitar disparos por error
         : this.#cfg.framesMov;
+
+    // Gesto que sigue mantenido: pasado un tiempo más dispara su acción alterna
+    // (cuernitos enciende; si se mantiene, apaga). Solo una vez por gesto.
+    const alterna = this.#cfg.sostenidos?.[efectiva];
+    if (alterna && efectiva === this.#actual && !this.#sostenidoEnviado
+      && this.#n >= necesarios + (this.#cfg.framesSostenido ?? 20)) {
+      this.#sostenidoEnviado = true;
+      return { clave: alterna, sostenido: true };
+    }
+
     if (this.#n < necesarios || efectiva === this.#actual) return null;
+    this.#sostenidoEnviado = false;  // gesto nuevo: vuelve a poder mantenerse
     if (efectiva === 'DETENER') { this.#armado = true; this.#actual = efectiva; return { clave: efectiva }; }
     if (!this.#armado) return null; // todavía no se mostró la palma o se quitó la mano
     this.#actual = efectiva;

@@ -377,12 +377,18 @@ export function crearCabina(THREE, { altura = 1.2, pluma: conPluma = true } = {}
     matLente.color.setHex(lucesOn ? 0xfff4d6 : 0x3a3f47);
   }
 
-  /** Alterna el estado «encendido» (baliza e instrumentos; visual). */
-  function alternarEncendido() {
-    encendidoOn = !encendidoOn;
+  /** Fija el estado «encendido» (baliza e instrumentos; visual). */
+  function fijarEncendido(valor) {
+    if (encendidoOn === valor) return;
+    encendidoOn = valor;
     matInst.map.dispose();
     matInst.map = texturaInstrumentos(THREE, encendidoOn);
     matInst.needsUpdate = true;
+  }
+
+  /** Alterna el estado «encendido». Se conserva por compatibilidad. */
+  function alternarEncendido() {
+    fijarEncendido(!encendidoOn);
   }
 
   function liberar() {
@@ -397,6 +403,6 @@ export function crearCabina(THREE, { altura = 1.2, pluma: conPluma = true } = {}
     palancas: Object.fromEntries(Object.entries(palancas).map(([k, p]) => [k, { pivote: p.pivote }])),
     inclinar,
     resaltar(lado, nivel) { palancas[lado].resalte = nivel; },
-    animar, alternarLuces, alternarEncendido, liberar,
+    animar, alternarLuces, alternarEncendido, fijarEncendido, liberar,
   };
 }

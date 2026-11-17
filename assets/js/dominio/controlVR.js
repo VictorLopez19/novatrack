@@ -13,11 +13,12 @@ const R_UNI = 0.013; // funciones de un solo toque
 const Y_FILA = -0.035;
 
 // tipo: 'unico' (un disparo) | 'detener' | 'salir' | 'recentrar'
+// `claveLarga`: orden alterna que se envía al mantener el botón hundido (ver vr.largoMs).
 export const BOTONES = Object.freeze([
   { id: 'SONIDO', tipo: 'unico', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', x: -0.15, y: Y_FILA, r: R_UNI, tono: 'morado' },
   { id: 'VELOCIDAD', tipo: 'unico', clave: 'VELOCIDAD', etiqueta: 'Velocidad', icono: 'bi-speedometer2', x: -0.105, y: Y_FILA, r: R_UNI, tono: 'morado' },
   { id: 'DETENER', tipo: 'detener', clave: 'DETENER', etiqueta: 'Detener', icono: 'bi-stop-fill', x: 0, y: Y_FILA, r: 0.026, tono: 'rojo' },
-  { id: 'ENCENDIDO', tipo: 'unico', clave: 'ENCENDIDO', etiqueta: 'Encendido', icono: 'bi-power', x: 0.105, y: Y_FILA, r: R_UNI, tono: 'morado' },
+  { id: 'ENCENDIDO', tipo: 'unico', clave: 'ENCENDER', claveLarga: 'APAGAR', etiqueta: 'Encendido', icono: 'bi-power', x: 0.105, y: Y_FILA, r: R_UNI, tono: 'morado' },
   { id: 'LUCES', tipo: 'unico', clave: 'LUCES', etiqueta: 'Luces', icono: 'bi-lightbulb-fill', x: 0.15, y: Y_FILA, r: R_UNI, tono: 'morado' },
   { id: 'RECENTRAR', tipo: 'recentrar', clave: null, etiqueta: 'Recentrar cabina', icono: 'bi-bullseye', x: -0.185, y: 0.055, r: 0.011, tono: 'gris' },
   { id: 'SALIR', tipo: 'salir', clave: null, etiqueta: 'Salir de VR', icono: 'bi-x-lg', x: 0.185, y: 0.055, r: 0.011, tono: 'gris' },

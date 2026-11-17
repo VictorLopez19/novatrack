@@ -42,6 +42,7 @@ export const CONFIG = Object.freeze({
     pongMs: 8000,
     reconexionMaxMs: 15000,
     mensajeMs: 2000,
+    largoMs: 1000,   // pulsación mantenida que dispara `claveLarga` (apagar)
   }),
 
   // MONITOREO. Las fechas «sin zona» (sin Z ni ±hh:mm) no se convierten salvo que sinZona sea 'utc'.
@@ -109,8 +110,10 @@ export const CONFIG = Object.freeze({
     GARRA_DERECHA: ['GIRAR_GARRA_DERECHA', 'GARRA_DERECHA', 'GIRO_GARRA_DERECHA', 'GIRAR_GARRA_DER', 'CERRAR_GARRA'],
     SONIDO: ['SONIDO', 'CLAXON', 'BOCINA'],
     VELOCIDAD: ['VELOCIDAD', 'CAMBIAR_VELOCIDAD'],
-    ENCENDIDO: ['ENCENDIDO', 'ENCENDER', 'APAGAR'],
-    LUCES: ['LUCES', 'LUZ', 'ENCENDER_LUCES'],
+    // Encender y apagar son comandos distintos del catálogo (antes eran uno solo).
+    ENCENDER: ['ENCENDER', 'ENCENDIDO', 'PRENDER', 'ARRANCAR'],
+    APAGAR: ['APAGAR', 'APAGADO'],
+    LUCES: ['LUZ', 'LUCES', 'ENCENDER_LUCES'],
   }),
 
   // Dirección del joystick -> clave lógica. `origen` (≤30 car.) queda en el historial del backend.
@@ -142,6 +145,7 @@ export const CONFIG = Object.freeze({
   }),
 
   // tipo: 'comando' (catálogo) | 'demo' (abre el panel DEMO) | 'pendiente' (sin soporte en la API actual)
+  // `claveLarga`: comando alterno que se envía al mantener pulsado el botón (ver tiempos.largoMs).
   // Define los botones disponibles en la interfaz y sus características visuales.
   botones: Object.freeze([
     // Botones de funciones pendientes de integración.
@@ -153,7 +157,12 @@ export const CONFIG = Object.freeze({
     // Botones asociados a comandos disponibles en el catálogo.
     { fila: 2, tipo: 'comando', clave: 'SONIDO', etiqueta: 'Sonido', icono: 'bi-volume-up-fill', tono: 'azul' },
     { fila: 2, tipo: 'comando', clave: 'VELOCIDAD', etiqueta: 'Velocidad', icono: 'bi-speedometer2', tono: 'azul' },
-    { fila: 2, tipo: 'comando', clave: 'ENCENDIDO', etiqueta: 'Encendido', icono: 'bi-power', tono: 'azul' },
+    // Toque: enciende. Mantener pulsado: apaga.
+    {
+      fila: 2, tipo: 'comando', clave: 'ENCENDER', claveLarga: 'APAGAR',
+      etiqueta: 'Encendido', icono: 'bi-power', tono: 'azul',
+      ayuda: 'Toca para encender; mantén pulsado para apagar',
+    },
     { fila: 2, tipo: 'comando', clave: 'LUCES', etiqueta: 'Luces', icono: 'bi-lightbulb-fill', tono: 'azul' },
 
     // Botón para abrir el panel de demostraciones.
@@ -165,7 +174,8 @@ export const CONFIG = Object.freeze({
     idioma: 'es-MX',
     depurar: true,
     autoDetenerMs: 0, // 0 = sin auto-detención
-    movimientos: ['AVANZAR', 'RETROCEDER', 'IZQUIERDA', 'DERECHA', 'BRAZO_SUBIR', 'BRAZO_BAJAR', 'GIRAR_GARRA_IZQUIERDA', 'GIRAR_GARRA_DERECHA'],
+    // Claves lógicas que se tratan como movimiento sostenido (las demás son de un solo disparo).
+    movimientos: ['AVANZAR', 'RETROCEDER', 'IZQUIERDA', 'DERECHA', 'BRAZO_SUBIR', 'BRAZO_BAJAR', 'GARRA_IZQUIERDA', 'GARRA_DERECHA'],
     urgentes: ['detente', 'detener', 'deten', 'alto', 'stop', 'frena', 'frenar', 'basta', 'parate'],
     relleno: ['por', 'favor', 'porfa', 'ahora', 'ya', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'hacia', 'a', 'al', 'de', 'del', 'en', 'que', 'poco', 'nova', 'track', 'robot', 'excavadora', 'oye', 'eh', 'mm', 'mmm', 'ah', 'uh', 'em', 'pues', 'bueno', 'hola', 'gracias', 'ok'],
     negaciones: ['no', 'nunca', 'tampoco', 'jamas', 'sin'],
@@ -182,8 +192,12 @@ export const CONFIG = Object.freeze({
       GARRA_DERECHA: ['garra derecha', 'pala derecha', 'gira garra derecha', 'gira pala derecha'],
       SONIDO: ['sonido', 'claxon', 'bocina', 'pita', 'pitar'],
       VELOCIDAD: ['velocidad', 'rapido', 'lento', 'acelera'],
-      ENCENDIDO: ['enciende', 'encender', 'apaga', 'apagar', 'encendido', 'prende', 'prender'],
-      LUCES: ['luces', 'luz', 'focos', 'enciende', 'prende', 'apaga', 'apagar'],
+      // Encender y apagar son comandos distintos: «enciende» y «apaga» ya no son ambiguos.
+      // Las luces conservan «enciende»/«apaga» como frases («enciende las luces»).
+      ENCENDER: ['enciende', 'encender', 'encendido', 'prende', 'prender', 'arranca', 'arrancar'],
+      APAGAR: ['apaga', 'apagar', 'apagado'],
+      LUCES: ['luces', 'luz', 'focos', 'enciende las luces', 'prende las luces',
+              'apaga las luces', 'enciende la luz', 'apaga la luz'],
     },
   }),
 
@@ -201,11 +215,13 @@ export const CONFIG = Object.freeze({
     largoMin: 0.5,        // largo mínimo del índice respecto de la palma
     zonaNeutra: 0.18,     // puño: radio central de la imagen que equivale a «quieto»
     umbralOk: 0.3,        // distancia pulgar–índice (respecto de la palma) para la señal OK
-    unicos: ['ENCENDIDO', 'VELOCIDAD', 'SONIDO', 'LUCES'],
+    unicos: ['ENCENDER', 'APAGAR', 'VELOCIDAD', 'SONIDO', 'LUCES'],
+    framesSostenido: 22,  // mantener el gesto este tiempo más (≈1.1 s) dispara la acción alterna
+    sostenidos: { ENCENDER: 'APAGAR' }, // igual que el botón: un toque enciende, mantenerlo apaga
     mapa: {               // izquierda y derecha son las del usuario
       indice: { arriba: 'AVANZAR', abajo: 'RETROCEDER', izquierda: 'IZQUIERDA', derecha: 'DERECHA' },
       dosDedos: { arriba: 'BRAZO_SUBIR', abajo: 'BRAZO_BAJAR', izquierda: 'GARRA_IZQUIERDA', derecha: 'GARRA_DERECHA' },
-      cuernitos: 'ENCENDIDO', puno: 'VELOCIDAD', tres: 'SONIDO', ok: 'LUCES',
+      cuernitos: 'ENCENDER', puno: 'VELOCIDAD', tres: 'SONIDO', ok: 'LUCES',
     },
   }),
 
@@ -228,6 +244,7 @@ export const CONFIG = Object.freeze({
     threeUrl: 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js',
     origen: 'WEB_VR',
     profundidad: 0.004,     // m que hay que hundir un botón (medido desde la piel del dedo) para presionarlo
+    largoMs: 650,           // tiempo hundido que convierte el botón de encendido en apagado
     pinzaCierra: 0.02,      // m entre pulgar e índice para tomar una palanca
     pinzaAbre: 0.035,       // m para soltarla (histéresis)
     alturaOjos: 1.2,        // m de los ojos al piso de la cabina: siempre se siente sentado, aunque estés de pie
