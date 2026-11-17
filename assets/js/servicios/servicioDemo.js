@@ -86,7 +86,7 @@ export class ServicioDemo {
         if (ia) this.#vigilarIA();
         this.#msg(ia ? 'La IA empezó a ejecutar la orden.' : 'DEMO iniciada (evento WSS).', 'info'); break;
       case 'demo_movimiento':
-        this.#store.set('demo', { ...this.#store.get('demo'), estado: 'ejecutando', modo, idDemo, orden: Number(ev.orden) || 0, total: Number(ev.total_movimientos) || 0, comando: textoSeguro(ev.comando, 40) });
+        this.#store.set('demo', { ...this.#store.get('demo'), estado: 'ejecutando', modo, idDemo, orden: Number(ev.orden) || 0, total: Number(ev.total_movimientos) || 0, comando: textoSeguro(ev.comando, 40).replaceAll('_', ' ') });
         if (ia) this.#vigilarIA();
         break;
       case 'demo_fin': fin(ia ? 'Orden de IA finalizada.' : 'DEMO finalizada.', 'ok'); break;
