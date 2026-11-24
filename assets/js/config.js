@@ -7,11 +7,8 @@
 // Define la configuración general de la aplicación y evita modificar sus propiedades.
 export const CONFIG = Object.freeze({
   // Direcciones base para las conexiones con la API y el WebSocket.
-  // apiBaseUrl: 'https://drivecore.duckdns.org',
-  // wsBaseUrl: 'wss://drivecore.duckdns.org',
-
-  apiBaseUrl: 'http://127.0.0.1:8000',
-  wsBaseUrl: 'ws://127.0.0.1:8000',
+  apiBaseUrl: 'https://drivecore.duckdns.org',
+  wsBaseUrl: 'wss://drivecore.duckdns.org',
 
   // Identificador del vehículo seleccionado por defecto.
   vehiculoPorDefecto: 1,
