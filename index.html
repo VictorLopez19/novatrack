@@ -14,8 +14,8 @@
         default-src 'self';
         script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
         connect-src 'self'
-            https://drivecore.duckdns.org
-            wss://drivecore.duckdns.org
+            http://127.0.0.1:8000
+            ws://127.0.0.1:8000
             https://cdn.jsdelivr.net
             https://cdnjs.cloudflare.com
             https://storage.googleapis.com;
@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="./assets/css/styles.css">
+    <link rel="stylesheet" href="./assets/css/admin.css">
 </head>
 
 <!-- Muestra la pantalla de entrada mientras se inicia la aplicación. -->
@@ -349,108 +350,434 @@
             <!-- Inicio de sesión (las credenciales solo se validan en el servidor). -->
             <section id="admin-login" class="adm-login" aria-labelledby="t-adm-login">
                 <div class="adm-login-ico" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></div>
-                <h2 id="t-adm-login">Administración</h2>
-                <p class="adm-login-intro">Inicia sesión para autorizar, revocar o cerrar las sesiones de control.</p>
+                <h2 id="t-adm-login">Iniciar sesión</h2>
+                <p class="adm-login-intro">Entra con tu usuario de administrador o con el correo de tu cuenta de cliente. Te llevaremos al panel que te corresponde.</p>
 
                 <form id="adm-form" class="adm-form" novalidate>
-                    <label class="form-label" for="adm-usuario">Usuario</label>
-                    <input id="adm-usuario" class="form-control" name="usuario" autocomplete="username"
-                        autocapitalize="none" spellcheck="false" maxlength="60" required>
+                    <label class="form-label" for="adm-usuario">Usuario o correo</label>
+                    <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span>
+                    <input id="adm-usuario" class="form-control" name="usuario" placeholder="admin o correo@ejemplo.com" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="60" required></div>
 
                     <label class="form-label" for="adm-clave">Contraseña</label>
                     <div class="adm-clave">
-                        <input id="adm-clave" class="form-control" name="contrasena" type="password"
-                            autocomplete="current-password" maxlength="128" required>
-                        <button id="adm-ver" class="adm-ver" type="button" aria-label="Mostrar contraseña">
-                            <i class="bi bi-eye" aria-hidden="true"></i>
-                        </button>
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
+                        <input id="adm-clave" class="form-control" name="contrasena" type="password" autocomplete="current-password" maxlength="128" required></div>
+                        <button id="adm-ver" class="adm-ver" type="button" aria-label="Mostrar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
                     </div>
 
                     <p id="adm-error" class="adm-error" role="alert" hidden></p>
 
-                    <button id="adm-entrar" class="btn-d btn-d-primario adm-entrar" type="submit">
-                        <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Entrar
-                    </button>
+                    <button id="adm-entrar" class="btn-d btn-d-primario adm-entrar" type="submit"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Entrar</button>
                 </form>
             </section>
 
+            <!-- Panel del propietario. -->
+            <div id="prop-panel" class="adm-panel ax-panel" hidden>
+                <header class="adm-cab">
+                    <div class="adm-titulo"><i class="bi bi-person-check" aria-hidden="true"></i><div><strong>Panel del propietario</strong><small id="prop-nombre"></small></div></div>
+                    <button id="prop-salir" class="btn-d btn-mon" type="button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión</button>
+                </header>
+                <div class="ax-acordeon"><p class="ax-grupo-tit">Mi carrito</p>
+                <details class="ax-item" name="ax-prop" open>
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-truck" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Mis carritos</strong><small>Elige la unidad que vas a administrar</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="row g-3 align-items-end"><div class="col-md-7"><label class="form-label" for="prop-vehiculo">Selecciona una unidad propia</label>
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-truck" aria-hidden="true"></i></span><select id="prop-vehiculo" class="form-select"></select></div></div>
+                        <div class="col-md-5"><button id="prop-usar-carrito" class="btn-d btn-d-primario w-100" type="button"><i class="bi bi-joystick" aria-hidden="true"></i> Usar en Control y Monitoreo</button></div></div>
+                    </div>
+                </details><p class="ax-grupo-tit">Invitados</p>
+                <details class="ax-item" name="ax-prop">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-key-fill" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>PIN y acciones generales</strong><small>Genera accesos y controla los permisos de tu carrito</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="prop-pin-form" class="ax-card adm-form" novalidate>
+                            <h3 class="ax-card-tit"><i class="bi bi-key-fill" aria-hidden="true"></i> PIN de invitado</h3>
+                            <p class="ax-ayuda">Genera tantos PIN como necesites y elige cuántos minutos (1 a 60) durará el control de cada sesión.</p>
+                            <div class="row g-3">
+                            <div class="col-md-7"><label class="form-label" for="prop-invitado">Nombre o referencia del invitado</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person-badge" aria-hidden="true"></i></span><input id="prop-invitado" class="form-control" maxlength="100" value="Invitado"></div></div>
+                            <div class="col-md-5"><label class="form-label" for="prop-duracion">Duración (min)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-stopwatch" aria-hidden="true"></i></span><input id="prop-duracion" class="form-control" type="number" min="1" max="60" step="1" value="10" required></div></div></div>
+                            <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-key" aria-hidden="true"></i> Generar PIN</button></div>
+                        </form>
+                        <div class="ax-card">
+                            <h3 class="ax-card-tit"><i class="bi bi-sliders" aria-hidden="true"></i> Acciones generales</h3>
+                            <label class="ax-toggle ax-toggle-grande"><input id="prop-auto" type="checkbox" role="switch"><span class="ax-toggle-pista" aria-hidden="true"></span><span class="ax-toggle-txt">Autorizar automáticamente las sesiones nuevas de este carrito</span></label>
+                            <div class="ax-botones ax-botones-col">
+                                <button id="prop-todas-si" class="btn-d btn-mon" type="button"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Autorizar todas</span></button>
+                                <button id="prop-todas-no" class="btn-d btn-mon" type="button"><i class="bi bi-shield-x" aria-hidden="true"></i><span>Revocar todas</span></button>
+                                <button id="prop-detener" class="btn-d btn-mon adm-peligro" type="button"><i class="bi bi-sign-stop" aria-hidden="true"></i><span>Detener vehículo</span></button>
+                            </div>
+                        </div>
+                        <div class="ax-card ax-card-lista ax-ancho"><h3 class="ax-card-tit"><i class="bi bi-key" aria-hidden="true"></i> PIN pendientes</h3>
+                            <ul id="prop-pines" class="ax-lista ax-pines" aria-live="polite"></ul>
+                            <p class="ax-ayuda">Cada PIN vence a los 5 minutos si no se canjea. Aquí siguen visibles aunque recargues la página.</p></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-prop">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-person-badge-fill" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Sesiones activas</strong><small>Permisos, cierre y estado en tiempo real</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <ul class="ax-kpis ax-kpis-4" aria-label="Resumen de sesiones"><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-people-fill" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="prop-n-total">0</strong><small>Sesiones</small></span></li><li class="ax-kpi" data-tono="azul"><span class="ax-kpi-ico"><i class="bi bi-broadcast" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="prop-n-conectadas">0</strong><small>En línea</small></span></li><li class="ax-kpi" data-tono="verde"><span class="ax-kpi-ico"><i class="bi bi-shield-check" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="prop-n-autorizadas">0</strong><small>Con permiso</small></span></li><li class="ax-kpi" data-tono="amarillo"><span class="ax-kpi-ico"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="prop-n-pendientes">0</strong><small>Pendientes</small></span></li></ul>
+                    <div class="ax-barra-herr">
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input id="prop-buscar" class="form-control adm-buscar" inputmode="numeric" maxlength="5" placeholder="Buscar por PIN" aria-label="Buscar sesión por PIN" autocomplete="off"></div>
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-funnel" aria-hidden="true"></i></span>
+                            <select id="prop-filtro" class="form-select adm-select" aria-label="Filtrar sesiones">
+                                <option value="todas">Todas</option><option value="pendientes">Pendientes</option><option value="autorizadas">Con permiso</option></select></div>
+                    </div>
+                    <ul id="prop-lista" class="adm-lista ax-sesiones" aria-live="polite"></ul>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-prop">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Bitácora de invitados</strong><small>Registro de actividad de tu carrito</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-card ax-card-lista"><ol id="prop-bitacora" class="ax-linea"></ol></div>
+                    </div>
+                </details><p class="ax-grupo-tit">Demos</p>
+                <details class="ax-item" name="ax-prop">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-collection-play" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Demos del carrito</strong><small>Lista y selección para editar o usar en Control</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-card ax-card-lista"><ul id="prop-demos" class="ax-lista" aria-live="polite"></ul></div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-prop">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Crear o editar demo</strong><small>Pasos, duración y pausas</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <form id="prop-demo-form" class="ax-card adm-form" novalidate>
+                        <input id="prop-demo-id" type="hidden">
+                        <div class="ax-grid">
+                            <div><div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="prop-demo-nombre">Nombre de la demo</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-tag" aria-hidden="true"></i></span><input id="prop-demo-nombre" class="form-control" maxlength="80" required></div></div>
+                            <div class="col-12"><label class="form-label" for="prop-demo-descripcion">Descripción</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-card-text" aria-hidden="true"></i></span><input id="prop-demo-descripcion" class="form-control" maxlength="255"></div></div></div>
+                            <h3 class="ax-card-tit mt-3"><i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar paso</h3>
+                            <div class="row g-3 align-items-end">
+                            <div class="col-12"><label class="form-label" for="prop-paso-comando">Comando disponible</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-arrows-move" aria-hidden="true"></i></span><select id="prop-paso-comando" class="form-select"></select></div></div>
+                            <div class="col-6"><label class="form-label" for="prop-paso-duracion">Duración (ms)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-stopwatch" aria-hidden="true"></i></span><input id="prop-paso-duracion" class="form-control" type="number" min="1" max="60000" value="1000"></div></div>
+                            <div class="col-6"><label class="form-label" for="prop-paso-pausa">Pausa (ms)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-pause-circle" aria-hidden="true"></i></span><input id="prop-paso-pausa" class="form-control" type="number" min="0" max="60000" value="0"></div></div>
+                                <div class="col-12"><button id="prop-paso-agregar" class="btn-d btn-mon w-100" type="button"><i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar paso</button></div></div></div>
+                            <div><h3 class="ax-card-tit"><i class="bi bi-list-ol" aria-hidden="true"></i> Pasos de la demo</h3>
+                            <ol id="prop-pasos" class="ax-lista ax-pasos"></ol>
+                            <p id="prop-demo-total" class="ax-total">Duración total: 0 s · máximo 300 s</p></div>
+                        </div>
+                        <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar demo</button><button id="prop-demo-nueva" class="btn-d btn-mon" type="button"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva</button><button id="prop-demo-baja" class="btn-d btn-mon" type="button"><i class="bi bi-archive" aria-hidden="true"></i> Dar de baja</button></div>
+                    </form>
+                    </div>
+                </details>
+                </div>
+                <p class="nota-info">Como propietario puedes controlar tu carrito con movimientos individuales y demos, y administrar sus sesiones de invitado. La edición del catálogo de movimientos y de los datos del carrito corresponde al administrador general.</p>
+            </div>
+
             <!-- Panel del administrador. -->
-            <div id="admin-panel" class="adm-panel" hidden>
+            <div id="admin-panel" class="adm-panel ax-panel" hidden>
                 <header class="adm-cab">
                     <div class="adm-titulo">
                         <i class="bi bi-shield-check" aria-hidden="true"></i>
-                        <div>
-                            <strong>Panel de administración</strong>
-                            <small id="adm-usuario-et"></small>
-                        </div>
+                        <div><strong>Panel de administración</strong><small id="adm-usuario-et"></small></div>
                     </div>
                     <span id="adm-chip-ws" class="chip"><i aria-hidden="true"></i><span></span></span>
-                    <button id="adm-salir" class="btn-d btn-mon" type="button">
-                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión
-                    </button>
+                    <button id="adm-salir" class="btn-d btn-mon" type="button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión</button>
                 </header>
-
-                <!-- Resumen -->
-                <ul class="adm-resumen" aria-label="Resumen de sesiones">
-                    <li><i class="bi bi-people-fill" aria-hidden="true"></i><strong id="adm-n-total">0</strong><span>Sesiones</span></li>
-                    <li data-tono="azul"><i class="bi bi-broadcast" aria-hidden="true"></i><strong id="adm-n-conectadas">0</strong><span>En línea</span></li>
-                    <li data-tono="verde"><i class="bi bi-shield-check" aria-hidden="true"></i><strong id="adm-n-autorizadas">0</strong><span>Con permiso</span></li>
-                    <li data-tono="amarillo"><i class="bi bi-hourglass-split" aria-hidden="true"></i><strong id="adm-n-pendientes">0</strong><span>Pendientes</span></li>
-                </ul>
-
-                <!-- Acciones generales -->
-                <section class="mon-panel adm-acciones" aria-labelledby="t-adm-acciones">
-                    <h2 id="t-adm-acciones" class="mon-titulo">
-                        <i class="bi bi-sliders" aria-hidden="true"></i> Acciones generales
-                    </h2>
-
-                    <label class="adm-switch">
-                        <input id="adm-auto" type="checkbox" role="switch">
-                        <span class="adm-switch-pista" aria-hidden="true"></span>
-                        <span>Autorizar automáticamente las sesiones nuevas</span>
-                    </label>
-
-                    <div class="adm-botones">
-                        <button id="adm-todas-si" class="btn-d btn-mon" type="button">
-                            <span>Autorizar todas</span>
-                        </button>
-                        <button id="adm-todas-no" class="btn-d btn-mon" type="button">
-                            <span>Revocar todas</span>
-                        </button>
-                        <button id="adm-detener" class="btn-d btn-mon adm-peligro" type="button">
-                            <span>Detener vehículo</span>
-                        </button>
+                <div class="ax-acordeon"><p class="ax-grupo-tit">Resumen</p>
+                <details class="ax-item" name="ax-adm" open>
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Resumen comercial</strong><small>Inventario, clientes y conectividad reportada</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-resumen-cuadro">
+                        <section class="ax-kpi-grupo"><h3 class="ax-card-tit"><i class="bi bi-boxes" aria-hidden="true"></i> Inventario</h3><ul class="ax-kpis"><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-modelos">Sin datos</strong><small>Modelos activos</small></span></li><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-truck" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-unidades">Sin datos</strong><small>Unidades activas</small></span></li><li class="ax-kpi" data-tono="verde"><span class="ax-kpi-ico"><i class="bi bi-bag-check" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-vendidas">Sin datos</strong><small>Vendidas / asignadas</small></span></li><li class="ax-kpi" data-tono="azul"><span class="ax-kpi-ico"><i class="bi bi-eye" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-prueba">Sin datos</strong><small>Disponibles para prueba</small></span></li></ul></section>
+                        <section class="ax-kpi-grupo ax-inv"><h3 class="ax-card-tit"><i class="bi bi-pie-chart" aria-hidden="true"></i> Distribución de unidades</h3>
+                            <div class="ax-barra" role="img" aria-label="Distribución de unidades activas" id="adm-barra-inv"><span data-seg="vendidas"></span><span data-seg="prueba"></span><span data-seg="resto"></span></div>
+                            <ul class="ax-leyenda"><li data-seg="vendidas">Vendidas / asignadas</li><li data-seg="prueba">Para prueba</li><li data-seg="resto">Otras</li></ul></section>
+                        <section class="ax-kpi-grupo"><h3 class="ax-card-tit"><i class="bi bi-people" aria-hidden="true"></i> Clientes y contenido</h3><ul class="ax-kpis"><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-people" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-clientes">Sin datos</strong><small>Clientes activos</small></span></li><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-collection-play" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-demos">Sin datos</strong><small>DEMO activas</small></span></li></ul></section>
+                        <section class="ax-kpi-grupo"><h3 class="ax-card-tit"><i class="bi bi-wifi" aria-hidden="true"></i> Conectividad</h3><ul class="ax-kpis"><li class="ax-kpi" data-tono="azul"><span class="ax-kpi-ico"><i class="bi bi-wifi" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-m-conectadas">Sin datos</strong><small>Reportadas conectadas</small></span></li></ul></section>
                     </div>
-
-                    <p id="adm-aviso" class="mon-aviso" role="status" hidden></p>
-                </section>
-
-                <!-- Sesiones -->
-                <section class="mon-panel adm-sesiones" aria-labelledby="t-adm-sesiones">
-                    <div class="mon-panel-cab">
-                        <h2 id="t-adm-sesiones" class="mon-titulo">
-                            <i class="bi bi-person-badge-fill" aria-hidden="true"></i> Sesiones activas
-                        </h2>
-                        <div class="adm-filtros">
-                            <input id="adm-buscar" class="form-control adm-buscar" inputmode="numeric" maxlength="5"
-                                placeholder="Buscar PIN" aria-label="Buscar sesión por PIN" autocomplete="off">
-                            <select id="adm-filtro" class="form-select adm-select" aria-label="Filtrar sesiones">
-                                <option value="todas">Todas</option>
-                                <option value="pendientes">Pendientes</option>
-                                <option value="autorizadas">Con permiso</option>
-                            </select>
+                    </div>
+                </details><p class="ax-grupo-tit">Comercial</p>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Modelos comerciales</strong><small>Alta, edición y activación de modelos</small></span>
+                        <span class="ax-badge" id="adm-badge-modelos">0</span>
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="adm-modelo-form" class="ax-card adm-form" novalidate>
+                            <input id="adm-modelo-id" type="hidden">
+                            <div class="ax-form-cab"><span id="adm-modelo-modo" class="ax-modo" data-editando="false">Nuevo</span>
+                            <button id="adm-modelo-cancelar" class="ax-link" type="button" hidden><i class="bi bi-x-circle" aria-hidden="true"></i> Cancelar edición</button></div>
+                            <div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="adm-modelo-nombre">Nombre</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-tag" aria-hidden="true"></i></span><input id="adm-modelo-nombre" class="form-control" maxlength="80" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-modelo-fabricante">Fabricante</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-building" aria-hidden="true"></i></span><input id="adm-modelo-fabricante" class="form-control" maxlength="100"></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-modelo-micro">Microcontrolador</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-cpu" aria-hidden="true"></i></span><input id="adm-modelo-micro" class="form-control" maxlength="50"></div></div>
+                            <div class="col-12"><label class="form-label" for="adm-modelo-descripcion">Descripción</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-card-text" aria-hidden="true"></i></span><input id="adm-modelo-descripcion" class="form-control" maxlength="255"></div></div></div>
+                            <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar modelo</button></div>
+                        </form>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-box-seam" aria-hidden="true"></i> Modelos registrados</h3>
+                        <ul id="adm-modelos-lista" class="ax-lista" aria-live="polite"></ul></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-truck" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Unidades físicas</strong><small>Inventario de carritos y su estado comercial</small></span>
+                        <span class="ax-badge" id="adm-badge-unidades">0</span>
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="adm-unidad-form" class="ax-card adm-form" novalidate>
+                            <input id="adm-unidad-id" type="hidden">
+                            <div class="ax-form-cab"><span id="adm-unidad-modo" class="ax-modo" data-editando="false">Nuevo</span>
+                            <button id="adm-unidad-cancelar" class="ax-link" type="button" hidden><i class="bi bi-x-circle" aria-hidden="true"></i> Cancelar edición</button></div>
+                            <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label" for="adm-unidad-modelo">Modelo comercial</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-box-seam" aria-hidden="true"></i></span><select id="adm-unidad-modelo" class="form-select" required></select></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-unidad-estado">Estado comercial</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-flag" aria-hidden="true"></i></span><select id="adm-unidad-estado" class="form-select"></select></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-unidad-nombre">Nombre</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-tag" aria-hidden="true"></i></span><input id="adm-unidad-nombre" class="form-control" maxlength="80" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-unidad-serie">Número de serie</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span><input id="adm-unidad-serie" class="form-control" maxlength="100" required></div></div>
+                            <div class="col-12"><label class="form-label" for="adm-unidad-descripcion">Descripción</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-card-text" aria-hidden="true"></i></span><input id="adm-unidad-descripcion" class="form-control" maxlength="255"></div></div></div>
+                            <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar unidad</button></div>
+                        </form>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-truck" aria-hidden="true"></i> Unidades registradas</h3>
+                        <ul id="adm-unidades-lista" class="ax-lista" aria-live="polite"></ul></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Clientes</strong><small>Altas, cambios y activación de cuentas</small></span>
+                        <span class="ax-badge" id="adm-badge-clientes">0</span>
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="adm-cliente-form" class="ax-card adm-form" novalidate>
+                            <input id="adm-cliente-id" type="hidden">
+                            <div class="ax-form-cab"><span id="adm-cliente-modo" class="ax-modo" data-editando="false">Nuevo</span>
+                            <button id="adm-cliente-cancelar" class="ax-link" type="button" hidden><i class="bi bi-x-circle" aria-hidden="true"></i> Cancelar edición</button></div>
+                            <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label" for="adm-cliente-nombre">Nombre</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span><input id="adm-cliente-nombre" class="form-control" maxlength="100" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-cliente-apellidos">Apellidos</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person-vcard" aria-hidden="true"></i></span><input id="adm-cliente-apellidos" class="form-control" maxlength="120"></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-cliente-correo">Correo</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-envelope" aria-hidden="true"></i></span><input id="adm-cliente-correo" class="form-control" type="email" maxlength="150" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-cliente-telefono">Teléfono</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-telephone" aria-hidden="true"></i></span><input id="adm-cliente-telefono" class="form-control" maxlength="25"></div></div>
+                            <div id="adm-cliente-pass-grupo" class="col-12"><label class="form-label" for="adm-cliente-password">Contraseña inicial <small>(solo al crear · mínimo 10 caracteres)</small></label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-shield-lock" aria-hidden="true"></i></span><input id="adm-cliente-password" class="form-control" type="password" minlength="10" maxlength="200" autocomplete="new-password"></div></div></div>
+                            <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar cliente</button></div>
+                        </form>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-people" aria-hidden="true"></i> Clientes registrados</h3>
+                        <ul id="adm-clientes-lista" class="ax-lista" aria-live="polite"></ul></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-link-45deg" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Asignación de unidades</strong><small>Entrega o reasigna una unidad a un cliente</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <form id="adm-asignacion-form" class="ax-card ax-card-centro adm-form" novalidate>
+                        <p class="ax-ayuda">Elige la unidad y el cliente. Si la unidad ya tenía dueño, la asignación anterior se finaliza.</p>
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label" for="adm-asignacion-unidad">Unidad</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-truck" aria-hidden="true"></i></span><select id="adm-asignacion-unidad" class="form-select" required></select></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-asignacion-cliente">Cliente</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person-check" aria-hidden="true"></i></span><select id="adm-asignacion-cliente" class="form-select" required></select></div></div>
+                            <div class="col-12"><label class="form-label" for="adm-asignacion-nota">Observaciones</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span><input id="adm-asignacion-nota" class="form-control" maxlength="255"></div></div></div>
+                        <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-link-45deg" aria-hidden="true"></i> Asignar / reasignar</button></div>
+                    </form>
+                    </div>
+                </details><p class="ax-grupo-tit">Catálogo y demos</p>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-toggles" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Movimientos por modelo</strong><small>Catálogo de movimientos de cada modelo</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <div class="ax-card adm-form">
+                            <div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="adm-catalogo-modelo">Modelo</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-box-seam" aria-hidden="true"></i></span><select id="adm-catalogo-modelo" class="form-select"></select></div></div></div>
+                            <form id="adm-catalogo-form" class="mt-3" novalidate>
+                                <h3 class="ax-card-tit"><i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar movimiento</h3>
+                                <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label" for="adm-catalogo-nombre">Nombre del movimiento</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-arrows-move" aria-hidden="true"></i></span><input id="adm-catalogo-nombre" class="form-control" maxlength="60" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-catalogo-codigo">Código enviado al carrito</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-hash" aria-hidden="true"></i></span><input id="adm-catalogo-codigo" class="form-control" type="number" min="0" max="9999" required></div></div>
+                            <div class="col-12"><label class="form-label" for="adm-catalogo-descripcion">Descripción</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-card-text" aria-hidden="true"></i></span><input id="adm-catalogo-descripcion" class="form-control" maxlength="255"></div></div></div>
+                                <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar al modelo</button></div>
+                            </form>
+                            <p class="ax-ayuda">Al agregar o reactivar un movimiento se incorpora a las unidades existentes y futuras de este modelo.</p>
                         </div>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-toggles" aria-hidden="true"></i> Movimientos del modelo</h3>
+                        <ul id="adm-catalogo-lista" class="ax-lista" aria-live="polite"></ul></div>
                     </div>
-                    <ul id="adm-lista" class="adm-lista" aria-live="polite"></ul>
-                </section>
-
-                <!-- Bitácora -->
-                <section class="mon-panel adm-bitacora" aria-labelledby="t-adm-bitacora">
-                    <h2 id="t-adm-bitacora" class="mon-titulo">
-                        <i class="bi bi-journal-text" aria-hidden="true"></i> Bitácora
-                    </h2>
-                    <ol id="adm-bitacora" class="adm-log"></ol>
-                </section>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-sliders2" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Movimientos por unidad</strong><small>Habilita o deshabilita movimientos en una unidad</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <div class="ax-card adm-form"><div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="adm-comandos-unidad">Unidad</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-truck" aria-hidden="true"></i></span><select id="adm-comandos-unidad" class="form-select"></select></div></div></div>
+                            <p class="ax-ayuda">Activa o desactiva con el interruptor los movimientos disponibles para esta unidad.</p></div>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-toggles" aria-hidden="true"></i> Movimientos de la unidad</h3>
+                        <ul id="adm-comandos-unidad-lista" class="ax-lista" aria-live="polite"></ul></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-collection-play" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Demos de empresa</strong><small>Crea secuencias de movimientos para una unidad</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="adm-demo-form" class="ax-card adm-form" novalidate>
+                            <div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="adm-demo-unidad">Unidad</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-truck" aria-hidden="true"></i></span><select id="adm-demo-unidad" class="form-select"></select></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-demo-nombre">Nombre de la demo</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-tag" aria-hidden="true"></i></span><input id="adm-demo-nombre" class="form-control" maxlength="80" required></div></div>
+                            <div class="col-md-6"><label class="form-label" for="adm-demo-descripcion">Descripción</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-card-text" aria-hidden="true"></i></span><input id="adm-demo-descripcion" class="form-control" maxlength="255"></div></div></div>
+                            <h3 class="ax-card-tit mt-3"><i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar paso</h3>
+                            <div class="row g-3 align-items-end">
+                            <div class="col-12"><label class="form-label" for="adm-demo-comando">Movimiento</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-arrows-move" aria-hidden="true"></i></span><select id="adm-demo-comando" class="form-select"></select></div></div>
+                            <div class="col-6"><label class="form-label" for="adm-demo-duracion">Duración (ms)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-stopwatch" aria-hidden="true"></i></span><input id="adm-demo-duracion" class="form-control" type="number" min="1" max="60000" value="1000"></div></div>
+                            <div class="col-6"><label class="form-label" for="adm-demo-pausa">Pausa (ms)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-pause-circle" aria-hidden="true"></i></span><input id="adm-demo-pausa" class="form-control" type="number" min="0" max="60000" value="0"></div></div>
+                                <div class="col-12"><button id="adm-demo-agregar-paso" class="btn-d btn-mon w-100" type="button"><i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar paso</button></div></div>
+                            <div class="ax-botones"><button class="btn-d btn-d-primario" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Crear demo y guardar pasos</button></div>
+                        </form>
+                        <div class="ax-card ax-card-lista"><h3 class="ax-card-tit"><i class="bi bi-list-ol" aria-hidden="true"></i> Pasos de la demo</h3>
+                            <ol id="adm-demo-pasos" class="ax-lista ax-pasos"></ol>
+                            <p id="adm-demo-total" class="ax-total">Duración total: 0 s · máximo 300 s</p></div>
+                    </div>
+                    </div>
+                </details><p class="ax-grupo-tit">Sesiones de invitado</p>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-key-fill" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>PIN y acciones generales</strong><small>Genera accesos de exhibición y controla permisos</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <div class="ax-grid">
+                        <form id="adm-pin-form" class="ax-card adm-form" novalidate>
+                            <h3 class="ax-card-tit"><i class="bi bi-key-fill" aria-hidden="true"></i> PIN de exhibición</h3>
+                            <p class="ax-ayuda">Solo se listan unidades activas con estado EXHIBICION. Genera tantos PIN como necesites y elige cuántos minutos (1 a 60) durará el control de cada sesión.</p>
+                            <div class="row g-3">
+                            <div class="col-12"><label class="form-label" for="adm-pin-vehiculo">Unidad de exhibición</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-truck" aria-hidden="true"></i></span><select id="adm-pin-vehiculo" class="form-select" required></select></div></div>
+                            <div class="col-md-7"><label class="form-label" for="adm-pin-invitado">Identificador del invitado</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-person-badge" aria-hidden="true"></i></span><input id="adm-pin-invitado" class="form-control" maxlength="100" value="Invitado"></div></div>
+                            <div class="col-md-5"><label class="form-label" for="adm-pin-duracion">Duración (min)</label>
+                                <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-stopwatch" aria-hidden="true"></i></span><input id="adm-pin-duracion" class="form-control" type="number" min="1" max="60" step="1" value="10" required></div></div></div>
+                            <div class="ax-botones"><button id="adm-pin-generar" class="btn-d btn-d-primario" type="submit"><i class="bi bi-key" aria-hidden="true"></i> Generar PIN</button></div>
+                        </form>
+                        <div class="ax-card">
+                            <h3 class="ax-card-tit"><i class="bi bi-sliders" aria-hidden="true"></i> Acciones generales</h3>
+                            <label class="ax-toggle ax-toggle-grande"><input id="adm-auto" type="checkbox" role="switch"><span class="ax-toggle-pista" aria-hidden="true"></span><span class="ax-toggle-txt">Autorizar automáticamente las sesiones nuevas</span></label>
+                            <div class="ax-botones ax-botones-col">
+                                <button id="adm-todas-si" class="btn-d btn-mon" type="button"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Autorizar todas</span></button>
+                                <button id="adm-todas-no" class="btn-d btn-mon" type="button"><i class="bi bi-shield-x" aria-hidden="true"></i><span>Revocar todas</span></button>
+                                <button id="adm-detener" class="btn-d btn-mon adm-peligro" type="button"><i class="bi bi-sign-stop" aria-hidden="true"></i><span>Detener vehículo</span></button>
+                            </div>
+                            <p id="adm-aviso" class="mon-aviso" role="status" hidden></p>
+                        </div>
+                        <div class="ax-card ax-card-lista ax-ancho"><h3 class="ax-card-tit"><i class="bi bi-key" aria-hidden="true"></i> PIN pendientes <span class="ax-badge" id="adm-badge-pines">0</span></h3>
+                            <ul id="adm-pines-lista" class="ax-lista ax-pines" aria-live="polite"></ul>
+                            <p class="ax-ayuda">Cada PIN vence a los 5 minutos si no se canjea. Aquí siguen visibles aunque recargues la página.</p></div>
+                    </div>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-person-badge-fill" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Sesiones activas</strong><small>Permisos, cierre y estado en tiempo real</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <ul class="ax-kpis ax-kpis-4" aria-label="Resumen de sesiones"><li class="ax-kpi"><span class="ax-kpi-ico"><i class="bi bi-people-fill" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-n-total">0</strong><small>Sesiones</small></span></li><li class="ax-kpi" data-tono="azul"><span class="ax-kpi-ico"><i class="bi bi-broadcast" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-n-conectadas">0</strong><small>En línea</small></span></li><li class="ax-kpi" data-tono="verde"><span class="ax-kpi-ico"><i class="bi bi-shield-check" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-n-autorizadas">0</strong><small>Con permiso</small></span></li><li class="ax-kpi" data-tono="amarillo"><span class="ax-kpi-ico"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span><span class="ax-kpi-txt"><strong id="adm-n-pendientes">0</strong><small>Pendientes</small></span></li></ul>
+                    <div class="ax-barra-herr">
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input id="adm-buscar" class="form-control adm-buscar" inputmode="numeric" maxlength="5" placeholder="Buscar por PIN" aria-label="Buscar sesión por PIN" autocomplete="off"></div>
+                        <div class="input-group ax-ig"><span class="input-group-text"><i class="bi bi-funnel" aria-hidden="true"></i></span>
+                            <select id="adm-filtro" class="form-select adm-select" aria-label="Filtrar sesiones">
+                                <option value="todas">Todas</option><option value="pendientes">Pendientes</option><option value="autorizadas">Con permiso</option></select></div>
+                    </div>
+                    <ul id="adm-lista" class="adm-lista ax-sesiones" aria-live="polite"></ul>
+                    </div>
+                </details>
+                <details class="ax-item" name="ax-adm">
+                    <summary class="ax-sum">
+                        <span class="ax-sum-ico"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+                        <span class="ax-sum-txt"><strong>Bitácora</strong><small>Registro de actividad de las sesiones</small></span>
+                        
+                    </summary>
+                    <div class="ax-cuerpo">
+                    <ol id="adm-bitacora" class="ax-linea"></ol>
+                    </div>
+                </details>
+                </div>
             </div>
         </main>
 
@@ -594,7 +921,7 @@
 
                 <div class="estado-info">
                     <strong>WebSocket</strong>
-                    <small>Sesión en tiempo real con la API</small>
+                    <small>Canal WSS del servidor, independiente del PIN</small>
                 </div>
 
                 <span id="chip-ws" class="chip">
@@ -643,7 +970,7 @@
         </div>
 
         <p class="nota-info">
-            Que el WSS o la API respondan no confirma que el vehículo físico esté conectado.
+            El indicador WSS confirma el canal del servidor; no confirma que el vehículo físico esté conectado.
         </p>
 
         <div class="dialogo-acciones">
@@ -657,13 +984,17 @@
 
     <!-- Permiso de la sesión. Se puede cerrar para ver el control completo; el PIN
          queda en el encabezado y vuelve a abrir este aviso al pulsarlo. -->
-    <dialog id="dlg-permiso" class="dialogo dlg-permiso" aria-labelledby="t-permiso">
+    <dialog id="dlg-permiso" class="dialogo dlg-permiso pin-dlg" aria-labelledby="t-permiso">
 
-        <h2 id="t-permiso">
-            <strong id="permiso-titulo">Esperando autorización</strong>
-        </h2>
+        <header class="pin-cab">
+            <span class="pin-ico"><i id="permiso-icono" class="bi bi-key-fill" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="t-permiso"><strong id="permiso-titulo">Esperando autorización</strong></h2>
+                <p id="permiso-texto" class="permiso-texto">El administrador debe generar un PIN temporal para la unidad de exhibición.</p>
+            </div>
+        </header>
 
-        <div class="permiso-pin">
+        <div class="permiso-pin pin-caja">
             <span class="permiso-pin-et">PIN de esta sesión</span>
             <strong id="permiso-pin" class="permiso-pin-num">*****</strong>
             <button id="permiso-copiar" class="permiso-copiar" type="button">
@@ -672,27 +1003,40 @@
             </button>
         </div>
 
-        <p id="permiso-texto" class="permiso-texto">
-            Comparte este PIN con el administrador para que autorice el control.
-        </p>
+        <form id="sesion-canjear-form" class="pin-form" novalidate>
+            <label class="pin-et" for="sesion-pin-entrada">Ingresa tu PIN temporal de 5 dígitos</label>
+            <div class="pin-entrada">
+                <i class="bi bi-key" aria-hidden="true"></i>
+                <input id="sesion-pin-entrada" class="form-control pin-input" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="5" pattern="[0-9]{5}" placeholder="• • • • •" aria-describedby="sesion-pin-error" required>
+            </div>
+            <p id="sesion-pin-error" class="adm-error" role="alert" hidden></p>
+            <button class="btn-d btn-d-primario pin-btn" type="submit"><i class="bi bi-unlock-fill" aria-hidden="true"></i> Iniciar sesión de control</button>
 
-        <ol class="permiso-pasos">
-            <li>Comparte tu PIN con el administrador.</li>
-            <li>Él lo autoriza desde la vista <b>Administración</b>.</li>
-            <li>Los mandos se activan aquí mismo, sin recargar la página.</li>
-        </ol>
+            <div class="pin-o" aria-hidden="true"><span>o</span></div>
 
-        <p class="nota-info">
-            Puedes cerrar este aviso para ver el control; se abrirá de nuevo si cambia el permiso.
-        </p>
+            <div class="pin-prueba">
+                <div class="pin-prueba-txt">
+                    <strong>¿Solo quieres probarla?</strong>
+                    <span>Maneja una unidad de exhibición durante 5 minutos, sin PIN.</span>
+                </div>
+                <button id="sesion-probar" class="btn-d btn-mon pin-btn" type="button"><i class="bi bi-stopwatch" aria-hidden="true"></i> Probar 5 minutos</button>
+            </div>
+        </form>
 
         <div class="dialogo-acciones">
-            <button id="btn-permiso-cerrar" class="btn-d btn-d-primario" type="button">
-                Entendido
-            </button>
+            <button id="btn-permiso-cerrar" class="btn-d btn-d-primario" type="button">Entendido</button>
         </div>
 
     </dialog>
+
+    <!-- Tiempo restante de la sesión de invitado (arriba, al centro). -->
+    <div id="sesion-timer" class="sesion-timer" role="timer" data-nivel="ok" hidden>
+        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+        <span class="st-et">Tiempo restante</span>
+        <strong class="st-tiempo" aria-hidden="true">00:00</strong>
+        <span class="st-barra" aria-hidden="true"><span></span></span>
+    </div>
 
     <!-- Muestra los mensajes y notificaciones generados dinámicamente. -->
     <div id="mensajes" class="chat-mensajes" role="log" aria-live="polite" aria-label="Mensajes"></div>
@@ -704,6 +1048,9 @@
             <p id="trans-texto"></p>
         </div>
     </div>
+
+    <!-- SweetAlert2: notificaciones de la sección de Administración. -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
 
     <!-- Carga el punto de entrada de JavaScript como módulo ES6. -->
     <script type="module" src="./assets/js/main.js"></script>

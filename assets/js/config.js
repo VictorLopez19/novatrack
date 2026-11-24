@@ -7,8 +7,11 @@
 // Define la configuración general de la aplicación y evita modificar sus propiedades.
 export const CONFIG = Object.freeze({
   // Direcciones base para las conexiones con la API y el WebSocket.
-  apiBaseUrl: 'https://drivecore.duckdns.org',
-  wsBaseUrl: 'wss://drivecore.duckdns.org',
+  // apiBaseUrl: 'https://drivecore.duckdns.org',
+  // wsBaseUrl: 'wss://drivecore.duckdns.org',
+
+  apiBaseUrl: 'http://127.0.0.1:8000',
+  wsBaseUrl: 'ws://127.0.0.1:8000',
 
   // Identificador del vehículo seleccionado por defecto.
   vehiculoPorDefecto: 1,
@@ -57,7 +60,7 @@ export const CONFIG = Object.freeze({
   // Rutas del backend FastAPI (api_vehiculo_iot). Ajusta aquí si cambian.
   endpoints: Object.freeze({
     salud: '/',
-    dbListo: '/vehiculos', // el backend no expone diagnóstico de RDS: RDS queda «Sin verificar»
+    dbListo: '/salud/rds',
     vehiculos: '/vehiculos',
     vehiculo: (id) => `/vehiculos/${id}`,
     comandos: (id) => `/vehiculos/${id}/comandos`,
@@ -66,6 +69,7 @@ export const CONFIG = Object.freeze({
     iniciarDemo: (idDemo) => `/control-demo/${idDemo}/iniciar`, // ?id_vehiculo=
     cancelarDemo: '/control-demo/cancelar',                      // ?id_vehiculo=
     ws: (id) => `/ws/vehiculos/${id}`,
+    wsSalud: '/ws/salud',
     estado: (id) => `/vehiculos/${id}/estado`,       // MONITOREO: último estado (EstadoSalida o null)
     historial: (id) => `/vehiculos/${id}/historial`, // MONITOREO: máx. 10 movimientos individuales, recientes primero
 
@@ -73,12 +77,15 @@ export const CONFIG = Object.freeze({
     iaCampo: 'instruccion', // nombre del campo de IAEntrada: confírmalo en /docs
 
     // SESIONES: una por cada carga de la página (PIN de 5 dígitos que autoriza el administrador).
-    sesiones: '/sesiones',
+    sesionCanjear: '/sesiones/canjear',
+    sesionPrueba: '/sesiones/prueba',
+    adminPines: '/admin/pines',
     sesionCerrar: (token) => `/sesiones/${encodeURIComponent(token)}/cerrar`, // navigator.sendBeacon al salir
     wsSesion: (token) => `/ws/sesiones/${encodeURIComponent(token)}`,
 
     // ADMINISTRACIÓN (Authorization: Bearer). Las credenciales solo se validan en el servidor.
     adminLogin: '/admin/login',
+    adminDashboard: '/admin/dashboard',
     adminLogout: '/admin/logout',
     adminSesiones: '/admin/sesiones',
     adminPermiso: (pin) => `/admin/sesiones/${pin}/permiso`,

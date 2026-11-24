@@ -70,6 +70,20 @@ export class AdminApi {
         return { token: r.token, usuario: textoSeguro(r.usuario, 60), venceEnS: r.vence_en_s };
     }
 
+    async crearPin(token, idVehiculo, identificadorInvitado = 'Invitado', duracionMin = null) {
+        const r = await this.#http.postAdmin(this.#ep.adminPines, token, {
+            cuerpo: {
+                id_vehiculo: idVehiculo, identificador_invitado: textoSeguro(identificadorInvitado, 100),
+                ...(Number.isInteger(duracionMin) ? { duracion_min: duracionMin } : {}),
+            },
+        });
+        if (!esObjeto(r) || !/^\d{5}$/.test(r.pin) || r.id_vehiculo !== idVehiculo
+            || !Number.isInteger(r.vigencia_s) || !Number.isInteger(r.duracion_sesion_s)) {
+            throw new ErrorApi('formato', 'Respuesta al generar PIN inválida.');
+        }
+        return { pin: r.pin, idVehiculo: r.id_vehiculo, vigenciaS: r.vigencia_s, duracionS: r.duracion_sesion_s };
+    }
+
     logout(token) {
         return this.#http.postAdmin(this.#ep.adminLogout, token);
     }
@@ -98,5 +112,13 @@ export class AdminApi {
 
     detener(token, idVehiculo) {
         return this.#http.postAdmin(this.#ep.adminDetener(idVehiculo), token);
+    }
+
+    dashboard(token) {
+        return this.#http.getAdmin(this.#ep.adminDashboard, token);
+    }
+
+    comercial(token, metodo, ruta, cuerpo) {
+        return this.#http.solicitar(metodo, ruta, { autorizacion: token, cuerpo });
     }
 }

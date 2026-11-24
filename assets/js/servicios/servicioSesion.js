@@ -5,23 +5,21 @@
 import { describirDispositivo } from '../api/sesionApi.js';
 import { textoSeguro } from '../core/utilidades.js';
 
-export const SIN_SESION = Object.freeze({ estado: 'creando', pin: null, autorizada: false });
+export const SIN_SESION = Object.freeze({ estado: 'requiere_pin', pin: null, autorizada: false });
 
 export class ServicioSesion {
-    #api; #store; #ws; #config;
+    #api; #store; #ws; #alCambiar;
     #token = null;
-    #intento = 0;
-    #tReintento = null;
     #saliendo = false;
 
     /**
      * @param api      SesionApi
      * @param crearWs  (urlPara) => ServicioWebSocket
      */
-    constructor({ api, store, crearWs, config }) {
+    constructor({ api, store, crearWs, alCambiar = () => {} }) {
         this.#api = api;
         this.#store = store;
-        this.#config = config;
+        this.#alCambiar = alCambiar;
         this.#ws = crearWs(() => this.#token);
 
         this.#ws.emisor.on('evento', (ev) => this.#alEvento(ev));
@@ -43,9 +41,7 @@ export class ServicioSesion {
 
         if (s.autorizada && this.#token) return null;
         if (s.estado === 'activa') return `Tu sesión (PIN ${s.pin}) aún no tiene permiso del administrador.`;
-        if (s.estado === 'cerrada') return 'La sesión fue cerrada por el administrador.';
-
-        return 'No hay una sesión de control activa todavía. Espera un momento.';
+        return 'Ingresa un PIN temporal generado por Administración para iniciar el control.';
     }
 
     /**
@@ -57,8 +53,7 @@ export class ServicioSesion {
         if (status !== 401 || !this.#token || this.#saliendo) return;
         if (ruta.startsWith('/admin') || ruta.startsWith('/sesiones')) return;
 
-        this.#msg('Tu sesión expiró: se generó un PIN nuevo que el administrador debe autorizar.', 'warn');
-        this.#crear();
+        this.#invalidar('Tu sesión expiró. Solicita un PIN nuevo al administrador.');
     }
 
     iniciar() {
@@ -70,32 +65,54 @@ export class ServicioSesion {
             if (e.persisted) location.reload();
         });
 
-        window.addEventListener('online', () => this.#ws.reconectarYa());
-
-        return this.#crear();
+        window.addEventListener('online', () => { if (this.#token) this.#ws.reconectarYa(); });
+        this.#store.set('sesion', SIN_SESION);
+        return Promise.resolve();
     }
 
-    async #crear() {
-        clearTimeout(this.#tReintento);
+    /** Canjea el PIN que entregó el administrador. */
+    canjear(pin) {
+        return this.#abrir((id) => this.#api.canjear(id, String(pin).trim(), describirDispositivo()));
+    }
+
+    /** Prueba una unidad de exhibición durante unos minutos, sin PIN. */
+    probar() {
+        return this.#abrir((id) => this.#api.probar(id, describirDispositivo()));
+    }
+
+    async #abrir(llamar) {
+        const vehiculoId = this.#store.get('vehiculoId');
+        if (!vehiculoId) throw new Error('No hay una unidad seleccionada.');
         this.#ws.desconectar();
         this.#token = null;
-        this.#store.set('sesion', SIN_SESION);
+        this.#alCambiar(null);
+        this.#store.set('sesion', { estado: 'canjeando', pin: null, autorizada: false });
 
         try {
-            const s = await this.#api.crear(describirDispositivo());
+            const s = await llamar(vehiculoId);
             if (this.#saliendo) return;
 
             this.#token = s.token;
-            this.#intento = 0;
-            this.#store.set('sesion', { estado: 'activa', pin: s.pin, autorizada: s.autorizada });
+            this.#store.set('sesion', {
+                estado: 'activa', pin: s.pin, autorizada: s.autorizada,
+                idVehiculo: vehiculoId, duracionS: s.duracionS,
+                venceEn: Date.now() + s.duracionS * 1000,
+            });
+            this.#alCambiar(this.#token);
             this.#ws.conectar('sesion');
+            return true;
         } catch (e) {
-            // La API no responde: se reintenta con espera creciente sin bloquear el resto de la página.
-            const espera = Math.min(this.#config.reintentoMaxMs, 2000 * 2 ** this.#intento);
-            this.#intento += 1;
-            this.#store.set('sesion', { estado: 'error', pin: null, autorizada: false, mensaje: textoSeguro(e.message, 120) });
-            this.#tReintento = setTimeout(() => this.#crear(), espera);
+            this.#store.set('sesion', {
+                estado: 'requiere_pin', pin: null, autorizada: false,
+                mensaje: textoSeguro(e.message, 160),
+            });
+            throw e;
         }
+    }
+
+    unidadCambiada() {
+        if (this.#token) this.#api.cerrarAlSalir(this.#token);
+        this.#invalidar('Cambió la unidad. Solicita un PIN nuevo para la unidad seleccionada.');
     }
 
     #actualizar(cambios) {
@@ -111,7 +128,12 @@ export class ServicioSesion {
 
         switch (ev.evento) {
             case 'sesion_estado':
-                if (ev.pin === actual.pin) this.#actualizar({ estado: 'activa', autorizada: ev.autorizada === true });
+                if (ev.pin === actual.pin) {
+                    const cambios = { estado: 'activa', autorizada: ev.autorizada === true };
+                    // El servidor informa cuánto le queda a la sesión: afina el temporizador.
+                    if (Number.isFinite(ev.vence_en_s)) cambios.venceEn = Date.now() + ev.vence_en_s * 1000;
+                    this.#actualizar(cambios);
+                }
                 break;
 
             case 'sesion_permiso': {
@@ -120,6 +142,7 @@ export class ServicioSesion {
                 if (autorizada === actual.autorizada) break;
 
                 this.#actualizar({ autorizada });
+                this.#alCambiar(this.#token);
                 this.#msg(
                     autorizada
                         ? 'El administrador autorizó tu sesión: ya puedes controlar el vehículo.'
@@ -130,18 +153,12 @@ export class ServicioSesion {
             }
 
             case 'sesion_cerrada':
-                // Cerrada por el administrador: se recarga la página y se obtiene un PIN nuevo sin permiso.
-                this.#ws.desconectar();
-                this.#token = null;
-                this.#store.set('sesion', { estado: 'cerrada', pin: actual.pin, autorizada: false });
-                this.#msg('El administrador cerró tu sesión. Recargando la página…', 'warn');
-                setTimeout(() => location.reload(), this.#config.recargaMs);
+                this.#invalidar('El administrador cerró la sesión. Solicita un PIN nuevo para volver a entrar.');
                 break;
 
             case 'sesion_invalida':
                 // La sesión expiró (p. ej. la API se reinició o se perdió la conexión demasiado tiempo).
-                this.#msg('Tu sesión expiró: se generó un PIN nuevo que el administrador debe autorizar.', 'warn');
-                this.#crear();
+                this.#invalidar('Tu sesión expiró. Solicita un PIN nuevo al administrador.');
                 break;
 
             default:
@@ -151,11 +168,19 @@ export class ServicioSesion {
 
     #alSalir() {
         this.#saliendo = true;
-        clearTimeout(this.#tReintento);
-
         if (this.#token) this.#api.cerrarAlSalir(this.#token);
 
         this.#token = null;
+        this.#alCambiar(null);
         this.#ws.desconectar();
+    }
+
+    #invalidar(mensaje) {
+        this.#ws.desconectar();
+        this.#token = null;
+        this.#alCambiar(null);
+        this.#store.set('sesionWs', 'desconectado');
+        this.#store.set('sesion', { estado: 'requiere_pin', pin: null, autorizada: false, mensaje });
+        this.#msg(mensaje, 'warn');
     }
 }

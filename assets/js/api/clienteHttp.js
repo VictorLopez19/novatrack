@@ -36,13 +36,14 @@ const MENSAJES = {
  * respuestas JSON y tratamiento de errores.
  */
 export class ClienteHttp {
-    #base; #timeoutMs; #obtenerSesion; #alRespuesta;
+    #base; #timeoutMs; #obtenerSesion; #obtenerUsuario; #obtenerAdministrador; #alRespuesta;
 
     /**
      * Inicializa el cliente HTTP con la configuración del servidor,
      * el tiempo de espera y las funciones auxiliares.
      */
-    constructor({ baseUrl, timeoutMs, obtenerSesion = () => '', alRespuesta = () => { } }) {
+    constructor({ baseUrl, timeoutMs, obtenerSesion = () => '', obtenerUsuario = () => '',
+        obtenerAdministrador = () => '', alRespuesta = () => { } }) {
         const base = String(baseUrl).replace(/\/+$/, '');
 
         // Evita conexiones HTTP inseguras cuando la aplicación utiliza HTTPS.
@@ -53,6 +54,8 @@ export class ClienteHttp {
         this.#base = base;
         this.#timeoutMs = timeoutMs;
         this.#obtenerSesion = obtenerSesion;
+        this.#obtenerUsuario = obtenerUsuario;
+        this.#obtenerAdministrador = obtenerAdministrador;
         this.#alRespuesta = alRespuesta;
     }
 
@@ -78,8 +81,12 @@ export class ClienteHttp {
         // Sesión de control: el backend solo acepta movimientos de sesiones autorizadas por el administrador.
         // Ya no se envía ninguna API Key: la clave de la API no sale del servidor.
         if (protegido) {
+            const administrador = this.#obtenerAdministrador();
+            const usuario = this.#obtenerUsuario();
             const sesion = this.#obtenerSesion();
-            if (sesion) headers['X-Sesion-Token'] = sesion;
+            if (administrador) headers.Authorization = `Bearer ${administrador}`;
+            else if (usuario) headers.Authorization = `Bearer ${usuario}`;
+            else if (sesion) headers['X-Sesion-Token'] = sesion;
         }
 
         // Token del administrador.
@@ -139,7 +146,7 @@ export class ClienteHttp {
                 const generico = MENSAJES[resp.status] ?? `Error HTTP ${resp.status}.`;
                 // En 401/403 el detalle solo se muestra si se refiere a la sesión o al administrador;
                 // cualquier otro detalle se sustituye por un mensaje genérico.
-                const deSesion = /sesi[oó]n|administrador|contrase/i.test(detalle);
+                const deSesion = /sesi[oó]n|administrador|contrase|pin/i.test(detalle);
                 const usarDetalle = detalle && ((resp.status !== 401 && resp.status !== 403) || deSesion);
 
                 throw new ErrorApi('http', usarDetalle ? detalle : generico, {

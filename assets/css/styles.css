@@ -1097,3 +1097,154 @@ html.sin-permiso .botonera, html.sin-permiso #joy-chasis, html.sin-permiso #joy-
 @media (prefers-reduced-motion: reduce) {
   .btn-d.confirmar { animation: none; }
 }
+
+/* Administración agrupada en secciones plegables para evitar una página interminable. */
+.adm-panel { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; }
+.adm-cab { grid-area: auto; }
+.adm-panel > .adm-grupo { grid-column: 1 / -1; min-width: 0; }
+.adm-grupo {
+  overflow: hidden;
+  border: 1px solid rgba(47, 139, 255, .3);
+  border-radius: 16px;
+  background: rgba(3, 12, 36, .7);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .16);
+}
+.adm-grupo-cab {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-height: 68px;
+  padding: .8rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  background: linear-gradient(100deg, rgba(10, 33, 80, .72), rgba(3, 12, 36, .35));
+}
+.adm-grupo-cab::-webkit-details-marker { display: none; }
+.adm-grupo-cab::after {
+  content: "";
+  width: .6rem;
+  height: .6rem;
+  margin-left: auto;
+  border-right: 2px solid var(--azul-cl);
+  border-bottom: 2px solid var(--azul-cl);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .18s ease;
+}
+.adm-grupo[open] > .adm-grupo-cab::after { transform: rotate(225deg) translate(-2px, -1px); }
+.adm-grupo-cab:focus-visible { outline: 3px solid #ffd54a; outline-offset: -3px; }
+.adm-grupo-cab > span:last-child { display: grid; gap: .15rem; }
+.adm-grupo-cab strong { font-size: 1rem; color: #f5f8ff; }
+.adm-grupo-cab small { font-size: .78rem; color: var(--muted); }
+.adm-grupo-icono {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(47, 139, 255, .48);
+  border-radius: 12px;
+  background: rgba(47, 139, 255, .12);
+  color: var(--azul-cl);
+  font-size: 1.1rem;
+}
+.adm-grupo-cuerpo { display: grid; gap: .85rem; padding: .85rem; }
+.adm-grupo-cuerpo > * { grid-area: auto; min-width: 0; }
+.adm-grupo-cuerpo > .mon-panel { margin: 0; }
+.adm-inventario-grid { grid-template-columns: minmax(0, 1fr); }
+.adm-grupo .adm-resumen { grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); }
+.adm-grupo .adm-bitacora { position: static; }
+.adm-grupo .adm-log { max-height: 360px; }
+.adm-grupo .adm-lista > li { min-width: 0; overflow-wrap: anywhere; }
+.adm-grupo .adm-lista > li > button { flex: 0 0 auto; margin-left: .5rem; }
+
+/* Acceso y panel del propietario */
+.adm-accesos {
+  display: flex;
+  width: min(520px, 100%);
+  gap: .35rem;
+  margin: 1rem auto;
+  padding: .35rem;
+  border: 1px solid rgba(47, 139, 255, .35);
+  border-radius: 16px;
+  background: rgba(3, 12, 36, .78);
+}
+.adm-accesos[hidden] { display: none; }
+.adm-accesos .btn-d { flex: 1 1 0; justify-content: center; min-height: 42px; border-color: transparent; }
+.adm-accesos .btn-d[aria-pressed="true"] {
+  border-color: rgba(62, 229, 138, .65);
+  background: linear-gradient(135deg, rgba(27, 126, 85, .48), rgba(10, 33, 80, .85));
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+}
+#prop-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+#prop-panel > .adm-cab,
+#prop-panel > .adm-acciones,
+#prop-panel > .nota-info { grid-column: 1 / -1; }
+#prop-panel > .adm-cab { border-color: rgba(62, 229, 138, .4); }
+#prop-panel > .adm-grupo { min-width: 0; }
+#prop-panel > .adm-acciones {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: .5rem .8rem;
+  padding: 1rem;
+  border: 1px solid rgba(62, 229, 138, .35);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgba(8, 35, 65, .9), rgba(3, 12, 36, .86));
+}
+#prop-panel > .adm-acciones .mon-titulo,
+#prop-panel > .adm-acciones #prop-aviso { grid-column: 1 / -1; }
+#prop-panel > .adm-acciones .form-label { grid-column: 1 / -1; margin-bottom: -.45rem; }
+#prop-panel > .adm-acciones #prop-vehiculo { min-width: 0; }
+#prop-panel > .adm-acciones #prop-usar-carrito { min-height: 44px; }
+#prop-panel .adm-lista > li { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+#prop-panel .adm-lista > li > span { flex: 1 1 100%; }
+#prop-panel .adm-paso-editor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-items: end; }
+#prop-panel .adm-paso-editor .form-label { display: block; }
+#prop-panel .adm-pasos { list-style: none; display: grid; gap: .45rem; margin: .8rem 0; padding: 0; }
+#prop-panel .adm-pasos > li {
+  display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: .4rem; align-items: center;
+  padding: .55rem; border: 1px solid rgba(47, 139, 255, .24); border-radius: 12px; background: rgba(4, 18, 47, .65);
+}
+#prop-panel .adm-pasos > li > span { min-width: 0; overflow-wrap: anywhere; font-size: .84rem; }
+#prop-panel .adm-pasos .btn-d { min-height: 36px; padding: .35rem .6rem; }
+#prop-panel .nota-info { margin: 0; padding: .8rem 1rem; border: 1px solid rgba(62, 229, 138, .25); border-radius: 14px; background: rgba(9, 41, 43, .36); }
+.adm-gestor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.adm-gestor-grid > section { min-width: 0; padding: 1rem; border: 1px solid rgba(47, 139, 255, .22); border-radius: 16px; background: rgba(4, 18, 47, .58); }
+.adm-gestor-grid > section:last-of-type { grid-column: 1 / -1; }
+.adm-gestor-grid > #adm-catalogo-aviso { grid-column: 1 / -1; }
+.adm-gestor-grid .adm-form > button[type="submit"] { width: 100%; margin-top: .8rem; }
+.adm-gestor-grid .adm-lista { margin-top: .8rem; }
+.adm-gestor-grid .adm-lista > li { display: flex; align-items: center; gap: .45rem; }
+.adm-gestor-grid .adm-lista > li > span { flex: 1 1 auto; min-width: 0; }
+.adm-gestor-grid .adm-paso-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-gestor-grid .adm-paso-editor > button { grid-column: 1 / -1; }
+.adm-gestor-grid .adm-pasos > li { grid-template-columns: minmax(0, 1fr) repeat(3, auto); }
+
+@media (min-width: 900px) {
+  .adm-panel { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; }
+  .adm-inventario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 599px) {
+  .adm-grupo-cab { min-height: 62px; padding: .65rem .75rem; }
+  .adm-grupo-cuerpo { padding: .6rem; }
+}
+@media (max-width: 760px) {
+  .adm-gestor-grid { grid-template-columns: minmax(0, 1fr); }
+  .adm-gestor-grid > section,
+  .adm-gestor-grid > section:last-of-type,
+  .adm-gestor-grid > #adm-catalogo-aviso { grid-column: 1; }
+  #prop-panel { grid-template-columns: minmax(0, 1fr); }
+  #prop-panel > .adm-grupo,
+  #prop-panel > .adm-cab,
+  #prop-panel > .adm-acciones,
+  #prop-panel > .nota-info { grid-column: 1; }
+}
+@media (max-width: 460px) {
+  #prop-panel > .adm-acciones { grid-template-columns: minmax(0, 1fr); }
+  #prop-panel > .adm-acciones > * { grid-column: 1 !important; }
+  #prop-panel .adm-paso-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #prop-panel .adm-paso-editor > button { grid-column: 1 / -1; }
+  #prop-panel .adm-pasos > li { grid-template-columns: minmax(0, 1fr) repeat(3, auto); }
+  .adm-accesos .btn-d { padding-inline: .45rem; font-size: .82rem; }
+}

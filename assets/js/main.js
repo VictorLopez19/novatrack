@@ -16,6 +16,8 @@ import { PanelDemo } from './ui/panelDemo.js';
 import { Ajustes } from './ui/ajustes.js';
 import { iniciarIndicadores } from './ui/indicadores.js';
 import { iniciarMensajes } from './ui/mensajes.js';
+import { notificar } from './ui/notificaciones.js';
+import { iniciarTemporizadorSesion } from './ui/temporizadorSesion.js';
 import { iniciarAvisoGiro } from './ui/avisoGiro.js';
 import { mostrarSplash } from './ui/splash.js';
 import { iniciarPantallaCompleta } from './ui/pantallaCompleta.js';
@@ -38,6 +40,7 @@ import { ServicioSesion, SIN_SESION } from './servicios/servicioSesion.js';
 import { ServicioAdmin } from './servicios/servicioAdmin.js';
 import { iniciarPanelSesion } from './ui/panelSesion.js';
 import { iniciarVistaAdmin } from './ui/vistaAdmin.js';
+import { iniciarVistaPropietario } from './ui/vistaPropietario.js';
 
 // Obtiene elementos del DOM por su identificador.
 const $ = (id) => document.getElementById(id);
@@ -51,6 +54,7 @@ const store = crearStore({
   demo: { estado: 'libre' },
   ws: 'desconectado',
   wsIntento: 0,
+  wsVehiculo: 'desconectado',
   api: 'comprobando',
   rds: 'sin_verificar',
   mensaje: { texto: '', tipo: 'info', id: 0 },
@@ -60,6 +64,7 @@ const store = crearStore({
   datosListos: false,
   modo: 'manual',
   vista: 'control',
+  rol: 'invitado',
   sesion: SIN_SESION,          // { estado, pin, autorizada } de la sesión de control de esta página
   sesionWs: 'desconectado',
 });
@@ -115,18 +120,31 @@ iniciarIndicadores(store, {
 
 // Declara las referencias a los servicios principales.
 let api;
+let http;
 let monitoreoApi;
 let ws;
+let wsSalud;
 let conectividad;
 let sesion;
 let admin;
+const SESION_PROPIETARIO = 'control.propietario.sesion';
+let tokenPropietario = (() => {
+  try {
+    const guardada = JSON.parse(sessionStorage.getItem(SESION_PROPIETARIO) ?? 'null');
+    return typeof guardada?.token === 'string' && Number.isFinite(guardada.vence)
+      && guardada.vence > Date.now() ? guardada.token : '';
+  } catch { return ''; }
+})();
+if (tokenPropietario) store.set('rol', 'propietario');
 
 // Configura los clientes HTTP, la API del vehículo y el servicio WebSocket.
 try {
-  const http = new ClienteHttp({
+  http = new ClienteHttp({
     baseUrl: CONFIG.apiBaseUrl,
     timeoutMs: CONFIG.tiempos.httpMs,
     obtenerSesion: () => sesion?.token ?? '',
+    obtenerUsuario: () => tokenPropietario,
+    obtenerAdministrador: () => admin?.tokenControl ?? '',
     alRespuesta: (s, r) => {
       conectividad?.alRespuestaHttp(s, r);
       // Un 401 en una ruta de control significa que el servidor ya no conoce esta sesión.
@@ -142,11 +160,22 @@ try {
     tiempos: CONFIG.tiempos,
   });
 
+  // Este canal solo comprueba el transporte WSS; no depende de PIN ni API Key.
+  wsSalud = new ServicioWebSocket({
+    urlPara: () => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.wsSalud}`,
+    tiempos: CONFIG.tiempos,
+  });
+
   // Sesión de control de esta página (PIN) y su WSS propio.
   sesion = new ServicioSesion({
     api: new SesionApi(http, CONFIG.endpoints),
     store,
-    config: CONFIG.sesion,
+    alCambiar: (token) => {
+      if (admin?.tokenControl || tokenPropietario || (token && store.get('sesion')?.autorizada)) {
+        ws.conectar(store.get('vehiculoId'));
+        void cargarDatos(store.get('vehiculoId'));
+      }
+    },
     crearWs: (token) => new ServicioWebSocket({
       urlPara: () => `${CONFIG.wsBaseUrl}${CONFIG.endpoints.wsSesion(token() ?? '')}`,
       tiempos: CONFIG.tiempos,
@@ -154,12 +183,12 @@ try {
   });
 
   // Movimientos, DEMO e IA se rechazan localmente si la sesión no tiene permiso del administrador.
-  api.usarPermiso(() => sesion.motivoSinPermiso());
+api.usarPermiso(() => (tokenPropietario || admin?.tokenControl) ? null : sesion.motivoSinPermiso());
 
   // Panel de administración: el token se envía como primer mensaje del WSS (no viaja en la URL).
   admin = new ServicioAdmin({
     api: new AdminApi(http, CONFIG.endpoints),
-    msg: (texto, tipo) => msg(texto, tipo),
+    msg: (texto, tipo) => notificar(texto, tipo), // Administración usa toasts de SweetAlert2
     claveAlmacen: CONFIG.sesion.claveAdmin,
     // La pestaña del administrador se autoriza sola al iniciar sesión.
     pinPropio: () => sesion?.pin ?? null,
@@ -168,6 +197,23 @@ try {
       tiempos: CONFIG.tiempos,
       alAbrir,
     }),
+  });
+  admin.estado.on('autenticado', (autenticado) => {
+    if (autenticado) {
+      store.set('rol', 'administrador');
+      const id = store.get('vehiculoId');
+      if (id) {
+        ws.conectar(id);
+        void cargarDatos(id);
+      }
+    } else if (store.get('rol') === 'administrador') {
+      store.set('rol', 'invitado');
+      const actual = store.get('sesion');
+      if (sesion?.token && actual?.autorizada) {
+        ws.conectar(actual.idVehiculo ?? store.get('vehiculoId'));
+        void cargarDatos(store.get('vehiculoId'));
+      }
+    }
   });
 } catch (e) {
   msg(e.message, 'error');
@@ -257,10 +303,24 @@ const marcarJoysticks = () => {
 };
 
 // Los joysticks solo responden en modo manual, en CONTROL y con una sesión autorizada.
+const tieneAccesoControl = () => ['administrador', 'propietario'].includes(store.get('rol'))
+  || store.get('sesion')?.autorizada === true;
+
 const actualizarJoysticks = () => {
-  const bloqueo = store.get('modo') !== 'manual' || store.get('vista') !== 'control' || !store.get('sesion').autorizada;
+  const bloqueo = store.get('modo') !== 'manual' || store.get('vista') !== 'control' || !tieneAccesoControl();
   for (const j of Object.values(joysticks)) j.deshabilitar(bloqueo);
 };
+const actualizarAccesoControl = () => {
+  const autorizado = tieneAccesoControl();
+  document.documentElement.classList.toggle('sin-permiso', !autorizado);
+  if (!autorizado) {
+    $('veh-nombre').textContent = '';
+    store.set('datosListos', false);
+    store.set('demos', []);
+  }
+  actualizarJoysticks();
+};
+store.on('rol', actualizarAccesoControl);
 
 const ETIQUETA_MODO = { manual: 'Manual', voz: 'Voz', gesto: 'Gestos', giro: 'Giroscopio', vr: 'VR' };
 store.on('modo', (m) => {
@@ -276,11 +336,7 @@ store.on('modo', (m) => {
 let teniaPermiso = false;
 
 store.on('sesion', (s) => {
-  document.documentElement.classList.toggle('sin-permiso', !s.autorizada);
-
-  // Si esta pestaña ya entró como administrador, su propia sesión se autoriza sola
-  // (también cuando expira y se genera un PIN nuevo).
-  if (s.estado === 'activa' && !s.autorizada) admin?.autorizarPropia();
+  actualizarAccesoControl();
 
   // Al perder el permiso nada debe seguir enviando comandos (el servidor ya detiene el vehículo).
   if (teniaPermiso && !s.autorizada) {
@@ -297,7 +353,7 @@ store.on('sesion', (s) => {
   actualizarJoysticks();
 });
 
-document.documentElement.classList.add('sin-permiso');
+document.documentElement.classList.toggle('sin-permiso', !tieneAccesoControl());
 const panelSesion = iniciarPanelSesion(store, {
   pin: 'info-pin',
   chip: 'chip-sesion',
@@ -310,7 +366,12 @@ const panelSesion = iniciarPanelSesion(store, {
   modalTitulo: 'permiso-titulo',
   modalPin: 'permiso-pin',
   modalTexto: 'permiso-texto',
-});
+  form: 'sesion-canjear-form',
+  probar: 'sesion-probar',
+  entrada: 'sesion-pin-entrada',
+  error: 'sesion-pin-error',
+}, sesion);
+iniciarTemporizadorSesion(store, $('sesion-timer'));
 actualizarJoysticks();
 
 iniciarPanelVoz({ panel: $('panel-voz'), servicio: voz, store });
@@ -354,13 +415,17 @@ const ajustes = new Ajustes({
   alGuardar: (id) => {
     preferencias.guardarVehiculoId(id);
 
-    if (id !== store.get('vehiculoId')) cargarVehiculo(id);
+    if (id !== store.get('vehiculoId')) {
+      sesion.unidadCambiada();
+      cargarVehiculo(id);
+    }
   },
 
   alLimpiar: () => {
     preferencias.olvidarVehiculo();
 
     if (store.get('vehiculoId') !== CONFIG.vehiculoPorDefecto) {
+      sesion.unidadCambiada();
       cargarVehiculo(CONFIG.vehiculoPorDefecto);
     }
   },
@@ -395,6 +460,10 @@ $('btn-pantalla').addEventListener('click', () => {
 
 // Actualiza el estado y el número de intentos de conexión.
 ws.emisor.on('estado', ({ estado, intento }) => {
+  store.set('wsVehiculo', estado);
+});
+
+wsSalud.emisor.on('estado', ({ estado, intento }) => {
   store.set('wsIntento', intento);
   store.set('ws', estado);
 });
@@ -445,7 +514,34 @@ monitoreo.iniciar();
 
 // Vista ADMINISTRACIÓN (el login del administrador se recuerda solo en esta pestaña).
 admin.restaurar();
-iniciarVistaAdmin({ servicio: admin, principal: store, pinPropio: () => sesion.pin });
+const puenteAcceso = {}; // el login único de Administración delega en la vista del propietario
+iniciarVistaAdmin({ servicio: admin, principal: store, pinPropio: () => sesion.pin, puente: puenteAcceso });
+iniciarVistaPropietario({
+  puente: puenteAcceso,
+  http,
+  principal: store,
+  alToken: (tokenPropietarioNuevo, usuario) => {
+    if (tokenPropietarioNuevo) {
+      sesion.unidadCambiada();
+      tokenPropietario = tokenPropietarioNuevo;
+      ws.desconectar();
+      store.set('rol', 'propietario');
+      store.set('sesion', { estado: 'propietario', pin: null, autorizada: true });
+      return;
+    }
+    tokenPropietario = '';
+    ws.desconectar();
+    store.set('rol', 'invitado');
+    store.set('sesion', SIN_SESION);
+  },
+  alUsarCarrito: (id) => {
+    if (!tokenPropietario) return;
+    preferencias.guardarVehiculoId(id);
+    store.set('rol', 'propietario');
+    store.set('sesion', { estado: 'propietario', pin: null, autorizada: true });
+    cargarVehiculo(id);
+  },
+});
 
 iniciarNavegacion({
   store,
@@ -479,23 +575,44 @@ let cargas = 0;
 
 // Obtiene la lista de vehículos disponibles.
 async function cargarVehiculos() {
+  const sesionActual = store.get('sesion');
+  const puedeListar = Boolean(admin?.tokenControl || tokenPropietario
+    || (sesionActual?.estado === 'activa' && sesionActual.autorizada === true));
+
+  if (!puedeListar) {
+    store.set('vehiculos', []);
+    return;
+  }
+
   try {
     store.set('vehiculos', await api.listarVehiculos());
   } catch {
-    // El proceso se reintenta automáticamente.
+    store.set('vehiculos', []);
   }
 }
 
+store.on('rol', () => { void cargarVehiculos(); });
+store.on('sesion', () => { void cargarVehiculos(); });
+
 // Carga por REST el vehículo, su catálogo y las DEMO.
 async function cargarDatos(id, { silencioso = false } = {}) {
+  if (!tieneAccesoControl()) {
+    $('veh-nombre').textContent = '';
+    store.set('datosListos', false);
+    store.set('demos', []);
+    return false;
+  }
+
   const mio = token;
   cargas += 1;
+  const controlAutorizado = ['administrador', 'propietario'].includes(store.get('rol'))
+    || store.get('sesion')?.autorizada === true;
 
   try {
     const [veh, cmds, demos] = await Promise.allSettled([
       api.obtenerVehiculo(id),
       api.listarComandos(id),
-      demo.cargar(id, { silencioso }),
+      controlAutorizado ? demo.cargar(id, { silencioso }) : Promise.resolve(true),
     ]);
 
     if (mio !== token) return false;
@@ -567,6 +684,8 @@ async function cargarVehiculo(id) {
 
   catalogo.cargar([]);
 
+  // El canal de eventos de la unidad es público; el permiso solo gobierna
+  // el uso de controles y la carga de datos privados en la plataforma.
   ws.conectar(id);
 
   await cargarDatos(id);
@@ -582,7 +701,7 @@ function reintentarSiFalta() {
 
   const id = store.get('vehiculoId');
 
-  if (!store.get('datosListos') && id) {
+  if (tieneAccesoControl() && !store.get('datosListos') && id) {
     cargarDatos(id, { silencioso: true });
   }
 }
@@ -596,6 +715,9 @@ store.on('api', (e) => {
 ws.emisor.on('estado', ({ estado }) => {
   if (estado === 'en_linea') reintentarSiFalta();
 });
+wsSalud.emisor.on('estado', ({ estado }) => {
+  if (estado === 'en_linea') reintentarSiFalta();
+});
 
 // Programa los reintentos automáticos.
 setInterval(reintentarSiFalta, 10000);
@@ -605,8 +727,7 @@ setInterval(reintentarSiFalta, 10000);
 // Comprueba si los servicios necesarios están disponibles.
 const serviciosListos = () =>
   store.get('api') === 'disponible' &&
-  store.get('ws') === 'en_linea' &&
-  store.get('datosListos');
+  store.get('ws') === 'en_linea';
 
 // Avisa si los servicios tardan demasiado en responder tras el splash.
 function avisarSiNoResponde() {
@@ -624,8 +745,9 @@ function avisarSiNoResponde() {
 // Inicializa los servicios y carga el vehículo seleccionado.
 async function iniciar() {
   conectividad.iniciar();
+  wsSalud.conectar('salud');
 
-  // Cada carga de la página abre una sesión nueva con su PIN (sin permiso hasta que el admin la autorice).
+  // El control inicia sin sesión; el invitado canjea un PIN temporal generado por Administración.
   sesion.iniciar();
 
   const id = preferencias.obtenerVehiculoId(CONFIG.vehiculoPorDefecto);

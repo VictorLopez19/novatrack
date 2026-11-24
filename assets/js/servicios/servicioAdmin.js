@@ -24,6 +24,7 @@ export class ServicioAdmin {
         datos: null,      // estado normalizado del panel
         recibido: 0,      // performance.now() de la última actualización (para los contadores)
         ocupado: false,   // hay una acción en curso
+        comercial: null,
     });
 
     #api; #ws; #msg; #clave; #pinPropio;
@@ -49,6 +50,11 @@ export class ServicioAdmin {
             if (ev.evento === 'admin_estado') this.#aplicar(ev);
             else if (ev.evento === 'admin_expirado') this.#limpiar('Tu sesión de administrador venció. Inicia sesión de nuevo.');
         });
+    }
+
+    /** Token Bearer para operaciones de control y administración del carrito. */
+    get tokenControl() {
+        return this.#token ?? '';
     }
 
     /** Recupera el login guardado en esta pestaña (si no ha vencido). */
@@ -77,8 +83,22 @@ export class ServicioAdmin {
 
         if (this.#activa) this.#conectar();
 
-        // Quien administra no debería pedirse permiso a sí mismo.
-        await this.autorizarPropia();
+    }
+
+    async cargarDashboard() {
+        if (!this.#token) return null;
+        const datos = await this.#api.dashboard(this.#token);
+        const claves = ['modelos', 'unidades', 'vendidas_asignadas', 'disponibles_prueba', 'clientes', 'demos', 'conectadas'];
+        if (!datos || claves.some((k) => !Number.isInteger(datos[k]) || datos[k] < 0)) {
+            throw new Error('La API devolvió métricas comerciales inválidas.');
+        }
+        this.estado.set('comercial', datos);
+        return datos;
+    }
+
+    comercial(metodo, ruta, cuerpo) {
+        if (!this.#token) throw new Error('Inicia sesión como administrador.');
+        return this.#api.comercial(this.#token, metodo, ruta, cuerpo);
     }
 
     /**
@@ -136,6 +156,22 @@ export class ServicioAdmin {
 
     async refrescar() {
         await this.#accion(() => this.#api.estado(this.#token), { silenciosa: true });
+    }
+
+    async generarPin(idVehiculo, identificador, duracionMin = null) {
+        if (!this.#token) return null;
+        this.estado.set('ocupado', true);
+        try {
+            const pin = await this.#api.crearPin(this.#token, idVehiculo, identificador, duracionMin);
+            this.#msg(`PIN ${pin.pin} generado. Sesión de ${Math.round(pin.duracionS / 60)} min; el PIN vence en ${Math.ceil(pin.vigenciaS / 60)} min.`, 'ok');
+            return pin;
+        } catch (e) {
+            if (e.status === 401) this.#limpiar('Tu sesión de administrador venció. Inicia sesión de nuevo.');
+            else this.#msg(e.message, 'error');
+            return null;
+        } finally {
+            this.estado.set('ocupado', false);
+        }
     }
 
     permiso(pin, autorizada) {

@@ -1,4 +1,4 @@
-// Lecturas de monitoreo (solo GET, sin clave). Reutiliza el ClienteHttp único del proyecto.
+// Lecturas de monitoreo protegidas por la sesión temporal vigente.
 import { validarEstado, validarHistorial } from '../core/validaciones.js';
 
 export class MonitoreoApi {
@@ -12,11 +12,11 @@ export class MonitoreoApi {
 
   // Último estado persistido; null si el vehículo existe pero aún no tiene estado.
   async obtenerEstado(id, { senal } = {}) {
-    return validarEstado(await this.#http.get(this.#ep.estado(id), { senal }));
+    return validarEstado(await this.#http.solicitar('GET', this.#ep.estado(id), { senal, protegido: true }));
   }
 
   // Últimos movimientos individuales (los de DEMO nunca aparecen, lo garantiza el backend).
   async consultarHistorial(id, { senal } = {}) {
-    return validarHistorial(await this.#http.get(this.#ep.historial(id), { senal }), id, this.#limite);
+    return validarHistorial(await this.#http.solicitar('GET', this.#ep.historial(id), { senal, protegido: true }), id, this.#limite);
   }
 }

@@ -14,7 +14,7 @@ La comunicación con el sistema se realiza mediante una API desarrollada con Fas
 </p>
 
 <p align="justify">
-Esta aplicación forma parte de un sistema compuesto por tres aplicaciones independientes: Control, Monitoreo y Administración. El presente proyecto corresponde exclusivamente a la aplicación de Control, por lo que no implementa funciones de monitoreo ni administración.
+Esta aplicación integra las vistas de CONTROL, MONITOREO y ADMINISTRACIÓN en el mismo proyecto. La autorización de CONTROL y MONITOREO usa sesiones de invitado con PIN; Administración usa su token Bearer.
 </p>
 
 <div style="font-size: 1.5em; font-weight: bold; margin-top: 30px;">Objetivo</div>
@@ -296,7 +296,7 @@ La disponibilidad de la API se comprueba periódicamente y también cuando se re
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10. Sesión de control y seguridad</div>
 
 <p align="justify">
-La aplicación ya no contiene ninguna clave: <code>config.js</code> no guarda secretos y la API Key no sale del servidor. Cada carga de la página abre una sesión propia en <code>POST /sesiones</code> y recibe un token secreto junto con un PIN de 5 dígitos. El token viaja en el encabezado <code>X-Sesion-Token</code> de las operaciones de control; el PIN es el dato que el usuario comparte con el administrador para que autorice su sesión.
+La aplicación ya no contiene ninguna clave: <code>config.js</code> no guarda secretos y la API Key no sale del servidor. El administrador genera un PIN temporal con <code>POST /admin/pines</code>, asociado a una unidad de exhibición. El usuario canjea ese PIN con <code>POST /sesiones/canjear</code>, indicando el ID de la unidad, y recibe un token temporal. El token viaja en el encabezado <code>X-Sesion-Token</code> de las operaciones de control.
 </p>
 
 <p align="justify">
@@ -304,13 +304,13 @@ Mientras la sesión no tenga permiso, la interfaz la bloquea localmente: los joy
 </p>
 
 <p align="justify">
-Un WebSocket propio, <code>/ws/sesiones/{token}</code>, mantiene viva la sesión y entrega los cambios de permiso en el momento. Si el administrador revoca el permiso, la interfaz apaga de inmediato los modos activos; si cierra la sesión, la página se recarga y obtiene un PIN nuevo. Al salir de la página, la sesión se destruye con <code>navigator.sendBeacon</code>.
+Un WebSocket propio, <code>/ws/sesiones/{token}</code>, mantiene viva la sesión y entrega los cambios de permiso en el momento. Si el administrador revoca el permiso, la interfaz apaga de inmediato los modos activos; si cierra la sesión o cambia la unidad, se solicita un PIN nuevo. Al salir de la página, la sesión se cierra con <code>navigator.sendBeacon</code>.
 </p>
 
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">10.1. Vista de administración</div>
 
 <p align="justify">
-La vista ADMINISTRACIÓN pide el usuario y la contraseña, que solo se validan en el servidor, y guarda el token resultante en <code>sessionStorage</code>: dura lo que la pestaña y no se comparte. Desde ahí se autorizan o revocan las sesiones una por una o todas a la vez, se cierran, se activa la autorización automática y se ejecuta la parada de emergencia. El WebSocket <code>/ws/admin</code> —que recibe el token como primer mensaje, nunca en la URL— mantiene la lista al día sin recargar.
+La vista ADMINISTRACIÓN pide el usuario y la contraseña, que solo se validan en el servidor, y guarda el token resultante en <code>sessionStorage</code>: dura lo que la pestaña y no se comparte. Desde ahí se generan PIN temporales para unidades de exhibición, se autorizan o revocan sesiones, se cierran, se configura la autorización automática y se ejecuta la parada de emergencia. El WebSocket <code>/ws/admin</code> —que recibe el token como primer mensaje, nunca en la URL— mantiene la lista al día sin recargar.
 </p>
 
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">11. Mensajes de la interfaz</div>
@@ -350,17 +350,18 @@ La aplicación consume los siguientes endpoints del backend desarrollado con Fas
 | POST | `/vehiculos/{id}/ia/ejecutar` | Ejecuta una orden interpretada por IA. |
 | GET | `/vehiculos/{id}/estado` | Último estado registrado (monitoreo). |
 | GET | `/vehiculos/{id}/historial` | Últimos movimientos (monitoreo). |
-| WSS | `/ws/vehiculos/{id}` | Recibe eventos del vehículo en tiempo real. |
+| WSS | `/ws/salud` | Eco `ping`/`pong` para comprobar el transporte WSS; no requiere PIN ni API Key y no expone datos del vehículo. |
+| WSS | `/ws/vehiculos/{id}` | Recibe eventos de la unidad tras validar el token de sesión, usuario o administrador en el primer mensaje. |
 
 <p align="justify">
-Las operaciones de control —movimientos, DEMO e IA— envían el encabezado <code>X-Sesion-Token</code>. Las consultas GET son públicas.
+Las operaciones de control —movimientos, DEMO e IA— envían el encabezado <code>X-Sesion-Token</code>. Estado e historial también exigen autorización por unidad. El listado básico de vehículos permanece disponible para mostrar el catálogo; no incluye el estado ni el historial.
 </p>
 
 <div style="font-size: 1.17em; font-weight: bold; margin-top: 22px;">Sesión de control</div>
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| POST | `/sesiones` | Abre la sesión de esta pestaña y devuelve su token y su PIN. |
+| POST | `/sesiones/canjear` | Canjea un PIN temporal de un solo uso y devuelve el token de sesión. |
 | POST | `/sesiones/{token}/cerrar` | Destruye la sesión al salir de la página (`sendBeacon`). |
 | WSS | `/ws/sesiones/{token}` | Mantiene viva la sesión y recibe los cambios de permiso. |
 
@@ -374,7 +375,20 @@ Todas estas operaciones envían el encabezado <code>Authorization: Bearer &lt;to
 |---|---|---|
 | POST | `/admin/login` | Valida el usuario y la contraseña; devuelve el token. |
 | POST | `/admin/logout` | Invalida el token actual. |
+| POST | `/admin/pines` | Genera un PIN temporal de un solo uso para una unidad de exhibición. |
 | GET | `/admin/sesiones` | Sesiones activas, bitácora y configuración. |
+| GET | `/admin/dashboard` | Métricas comerciales leídas desde MySQL. |
+| GET/POST | `/admin/modelos` | Consultar y registrar modelos comerciales. |
+| PUT/DELETE | `/admin/modelos/{id}` | Editar o dar de baja lógicamente un modelo. |
+| GET/POST | `/admin/unidades` | Buscar y registrar unidades físicas. |
+| PUT/DELETE | `/admin/unidades/{id}` | Editar o dar de baja lógicamente una unidad. |
+| GET/POST | `/admin/clientes` | Buscar clientes paginados y dar de alta cuentas. |
+| PUT | `/admin/clientes/{id}` | Editar o desactivar una cuenta. |
+| GET | `/admin/asignaciones` | Consultar el historial de asignaciones. |
+| POST | `/admin/unidades/{id}/asignaciones` | Asignar o reasignar una unidad a un cliente. |
+| POST | `/auth/login` | Iniciar sesión de comprador. |
+| GET | `/me/vehiculos` | Consultar exclusivamente las unidades activas propias. |
+| GET | `/salud/rds` | Comprobar API y conexión efectiva con MySQL. |
 | POST | `/admin/sesiones/{pin}/permiso` | Autoriza o revoca una sesión. |
 | POST | `/admin/sesiones/permiso` | Autoriza o revoca todas las sesiones. |
 | POST | `/admin/sesiones/{pin}/cerrar` | Expulsa una sesión. |
@@ -561,7 +575,7 @@ El archivo <code>.nojekyll</code> permite evitar el procesamiento de Jekyll y fa
 - La aplicación requiere conexión a Internet para comunicarse con el backend desplegado.
 - El servidor debe permitir las conexiones REST y WebSocket desde el dominio de publicación.
 - Las operaciones protegidas requieren una clave API válida.
-- La clave se define en `config.js` y es visible en el código publicado.
+- Los secretos no se configuran en el frontend; las operaciones comerciales requieren un token de administrador.
 - La confirmación HTTP de una solicitud no garantiza que el movimiento se haya ejecutado físicamente.
 - Los eventos WebSocket confirman información procesada o comunicada por el backend, pero no necesariamente la ejecución física del mecanismo.
 - La conexión WebSocket del navegador no garantiza que el ESP32 esté conectado.

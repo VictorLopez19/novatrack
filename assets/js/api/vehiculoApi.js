@@ -52,7 +52,7 @@ export class VehiculoApi {
 
     // Obtiene y valida la lista de vehículos registrados.
     async listarVehiculos() {
-        return lista(await this.#http.get(this.#ep.vehiculos), 'vehículos')
+        return lista(await this.#http.get(this.#ep.vehiculos, { protegido: true }), 'vehículos')
             .filter((v) => esObjeto(v) && esEnteroPositivo(v.id_vehiculo) && typeof v.nombre === 'string')
             .map((v) => ({
                 id: v.id_vehiculo,
@@ -90,7 +90,7 @@ export class VehiculoApi {
 
     // Obtiene las demostraciones disponibles para un vehículo.
     async listarDemos(id) {
-        return lista(await this.#http.get(this.#ep.demos(id)), 'DEMO')
+        return lista(await this.#http.get(this.#ep.demos(id), { protegido: true }), 'DEMO')
             .filter((d) => esObjeto(d) && esEnteroPositivo(d.id_demo) && typeof d.nombre === 'string')
             .map((d) => ({
                 id_demo: d.id_demo,

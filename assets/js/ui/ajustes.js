@@ -62,17 +62,9 @@ export class Ajustes {
     });
   }
 
-  // Obtiene la lista de vehículos o utiliza el vehículo actual como alternativa.
+  // Solo muestra unidades entregadas por la API para la identidad autenticada.
   #opciones() {
-    const lista = this.#store.get('vehiculos');
-
-    if (lista.length) return lista;
-
-    const id = this.#store.get('vehiculoId'); // sin lista: al menos el vehículo actual
-
-    return id
-      ? [{ id, nombre: `Vehículo #${id}`, activo: true }]
-      : [];
+    return this.#store.get('vehiculos');
   }
 
   // Construye y actualiza las tarjetas de vehículos y los comandos faltantes.
@@ -87,8 +79,11 @@ export class Ajustes {
       p.className = 'vehiculos-vacio';
 
       p.textContent = this.#store.get('api') === 'no_disponible'
-        ? 'No se pudo cargar la lista de vehículos. Revisa la API.'
-        : 'Cargando vehículos…';
+        ? 'No se pudo cargar la lista de unidades. Revisa la API.'
+        : ['administrador', 'propietario'].includes(this.#store.get('rol'))
+          || this.#store.get('sesion')?.autorizada === true
+          ? 'No hay unidades disponibles para esta cuenta.'
+          : 'Inicia sesión o canjea un PIN para ver tus unidades.';
 
       nodos.push(p);
     }
@@ -191,13 +186,8 @@ export class Ajustes {
     const lista = this.#store.get('vehiculos');
     const id = this.#sel;
 
-    if (!Number.isInteger(id) || id <= 0) {
-      this.#msg('Selecciona un vehículo para guardar.', 'error');
-      return;
-    }
-
-    if (lista.length && !lista.some((v) => v.id === id && v.activo)) {
-      this.#msg('El vehículo elegido no existe o está inactivo.', 'error');
+    if (!Number.isInteger(id) || id <= 0 || !lista.some((v) => v.id === id && v.activo)) {
+      this.#msg('Inicia sesión y selecciona una unidad autorizada para guardar.', 'error');
       return;
     }
 
